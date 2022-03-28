@@ -3,4 +3,4 @@ project(DeepLProject)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_executable(DeepLProject main.cpp)
+add_executable(DeepLProject main.cpp perceptron.cpp MNist/MNist.cpp)
