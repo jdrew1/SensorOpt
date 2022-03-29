@@ -2,6 +2,6 @@
 
 int main() {
     //MNist::BasicMNISTPercept();
-    SettingsFile::ReadSettingsFile();
+    SettingsFile::InitSettings();
     return 0;
 }
