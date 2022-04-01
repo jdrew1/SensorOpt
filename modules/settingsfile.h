@@ -4,10 +4,10 @@
 #include <iostream>
 #include <cstdio>
 #include <string>
-#include "lib/rapidJSON/include/rapidjson/document.h"
-#include "lib/rapidJSON/include/rapidjson/ostreamwrapper.h"
-#include "lib/rapidJSON/include/rapidjson/istreamwrapper.h"
-#include "lib/rapidJSON/include/rapidjson/writer.h"
+#include "rapidjson/document.h"
+#include "rapidjson/ostreamwrapper.h"
+#include "rapidjson/istreamwrapper.h"
+#include "rapidjson/writer.h"
 
 namespace SettingsFile{
     enum FileType {Local=true, Default=false};

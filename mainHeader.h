@@ -10,10 +10,10 @@
     #include "lib/rapidJSON/include/rapidjson/rapidjson.h"
     //basic files
     //--------------------------------------------------
-    #include "perceptron.h"
-    #include "SettingsFiles.h"
+    #include "modules/network/perceptron.h"
+    #include "modules/settingsfile.h"
     //application specific
     //--------------------------------------------------
-    #include "MNist/MNist.h"
-    #include "MNist/DataHandling.h"
+    #include "modules/MNist/MNist.h"
+    #include "modules/MNist/DataHandling.h"
 #endif

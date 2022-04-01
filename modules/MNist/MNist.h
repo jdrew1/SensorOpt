@@ -4,8 +4,8 @@
 #include <fstream>
 #include <iostream>
 #include <vector>
-#include "../lib/Eigen/Eigen/Eigen"
-#include "../perceptron.h"
+#include "Eigen/Eigen"
+#include "network/perceptron.h"
 
 namespace MNist{
     std::vector<Eigen::RowVectorXf *> ConvertMNISTImageData(std::ifstream dataFile);

@@ -3,7 +3,7 @@
 
 #include <iostream>
 #include <fstream>
-#include "../lib/Eigen/Eigen/Eigen"
+#include "Eigen/Eigen"
 #include "MNist.h"
 namespace MNist{
     std::ifstream FindInputData(const char* filename){

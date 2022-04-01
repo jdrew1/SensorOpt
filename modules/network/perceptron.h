@@ -1,7 +1,7 @@
 #ifndef NEURALPROJECT_PERCEPTRON_H
 #define NEURALPROJECT_PERCEPTRON_H
 #include <vector>
-#include "lib/Eigen/Eigen/Eigen"
+#include "Eigen/Eigen"
 #include <math.h>
 #include <fstream>
 #include <string>
