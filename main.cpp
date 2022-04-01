@@ -1,7 +1,9 @@
 #include "mainHeader.h"
 
 int main() {
-    MNist::BasicMNISTPercept();/*
-    SettingsFile::InitSettings();
-/**/return 0;
+    InitProgram();
+
+
+    //MNist::BasicMNISTPercept();
+    return 0;
 }

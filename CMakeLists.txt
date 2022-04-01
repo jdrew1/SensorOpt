@@ -1,6 +1,6 @@
 #init
 cmake_minimum_required(VERSION 3.21)
-
+file(COPY defaultConfig.conf DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 project(DeepLProject)
 set(CMAKE_CXX_STANDARD 14)
 

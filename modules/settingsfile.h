@@ -1,5 +1,6 @@
 #ifndef NEURALPROJECT_SETTINGSFILE_H
 #define NEURALPROJECT_SETTINGSFILE_H
+#define RAPIDJSON_HAS_STDSTRING 1
 
 #include <iostream>
 #include <cstdio>
@@ -8,6 +9,7 @@
 #include "rapidjson/ostreamwrapper.h"
 #include "rapidjson/istreamwrapper.h"
 #include "rapidjson/writer.h"
+
 
 namespace SettingsFile{
     enum FileType {Local=true, Default=false};
@@ -66,6 +68,7 @@ namespace SettingsFile{
         bool local = false;
         if (!localJson.IsNull() && localJson.HasMember(settingName))
             local = true;
+
         *in = local ?
                 localJson[settingName].Get<T>()
               : defaultJson[settingName].Get<T>();

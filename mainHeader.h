@@ -10,10 +10,19 @@
     #include "lib/rapidJSON/include/rapidjson/rapidjson.h"
     //basic files
     //--------------------------------------------------
-    #include "modules/network/perceptron.h"
-    #include "modules/settingsfile.h"
+    #include "network/perceptron.h"
+    #include "settingsfile.h"
+    #include "logger.h"
     //application specific
     //--------------------------------------------------
     #include "modules/MNist/MNist.h"
     #include "modules/MNist/DataHandling.h"
+
+
+
+
+    void InitProgram(){
+        SettingsFile::InitSettings();
+        MyLogger::InitLogging();
+    }
 #endif
