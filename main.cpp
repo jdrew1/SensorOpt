@@ -4,6 +4,6 @@ int main() {
     InitProgram();
 
 
-    //MNist::BasicMNISTPercept();
+    MNist::BasicMNISTPercept();
     return 0;
 }
