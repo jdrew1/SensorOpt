@@ -21,6 +21,8 @@ STEP 2
 ----------
 Ensure the required dependencies exist in the "lib" folder
     See the "Dependencies" section for a list of all submodules
+Make sure that the carla environment is accessible
+    (Recommended: use the same conda environment used to build Carla Simulator)
 
 STEP 3
 ----------
@@ -40,6 +42,8 @@ Finally, build
 
 ====================Dependencies====================
 ====================================================
-
+-Eigen3
+-Python3.8 (recommended through conda)
+-RapidJSON
 
 --End of Readme.txt

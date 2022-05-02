@@ -2,8 +2,9 @@
 
 int main() {
     InitProgram();
+    //MNist::BasicMNISTPercept();
 
+    TestABC("TESTING");
 
-    MNist::BasicMNISTPercept();
     return 0;
 }

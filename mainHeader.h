@@ -13,6 +13,7 @@
     #include "network/perceptron.h"
     #include "settingsfile.h"
     #include "logger.h"
+    #include "PythonAPI.h" 
     //application specific
     //--------------------------------------------------
     #include "modules/MNist/MNist.h"
