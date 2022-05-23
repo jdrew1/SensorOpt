@@ -24,17 +24,26 @@ Ensure the required dependencies exist in the "lib" folder
 Make sure that the carla environment is accessible
     (Recommended: use the same conda environment used to build Carla Simulator)
 
-STEP 3
+STEP 4
+----------
+In the file "CMakeLists.txt", change the
+    --set(Python3_ROOT_DIR "")--
+    to
+    --set(Python3_ROOT_DIR "/Users/Shared/anaconda/xxxxxxxx")--
+to the path where python is installed on your machine.
+If you are using an anaconda environment, make sure the carla PythonAPI is installed and the environment is active.
+
+STEP 4
 ----------
 Next, create a new subdirectory in which to build
     'mkdir build'
 
-STEP 4
+STEP 5
 ----------
 Navigate to the build directory
     'cd build'
 
-STEP 5
+STEP 6
 ----------
 Finally, build
     'cmake ..'

@@ -74,5 +74,14 @@ namespace SettingsFile{
               : defaultJson[settingName].Get<T>();
         return true;
     }
+	std::string StringSetting(const char * settingName){
+		bool local = false;
+		if (!localJson.IsNull() && localJson.HasMember(settingName))
+			local = true;
+
+		return local ?
+			  localJson[settingName].Get<std::string>()
+					: defaultJson[settingName].Get<std::string>();
+	}
 }
 #endif //NEURALPROJECT_SETTINGSFILE_H

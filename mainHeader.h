@@ -25,5 +25,6 @@
     void InitProgram(){
         SettingsFile::InitSettings();
         MyLogger::InitLogging();
+		CarlaAPI::SetupPython();
     }
 #endif
