@@ -25,7 +25,9 @@ namespace CarlaAPI{
         PyObject* pArgs = PyUnicode_FromString("--frames 10");
 
 		if(pModule){
-			PyObject* pFunc = PyObject_GetAttrString(pModule, "simpleReturn");
+			PyObject* pFunc = PyObject_GetAttrString(pModule, "simple_return");
+            if (PyCallable_Check(pFunc))
+                printf("function not callable\n");
 			if(pFunc && PyCallable_Check(pFunc)){
 				PyObject* pValue = PyObject_CallObject(pFunc, pArgs);
                 if (pValue) {

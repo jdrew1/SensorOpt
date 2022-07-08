@@ -42,12 +42,17 @@ except ImportError:
 VIRIDIS = np.array(cm.get_cmap('viridis').colors)
 VID_RANGE = np.linspace(0.0, 1.0, VIRIDIS.shape[0])
 
+
 def sensor_callback(data, queue):
     """
     This simple callback just stores the data on a thread safe Python Queue
     to be retrieved from the "main thread".
     """
     queue.put(data)
+
+
+def simple_return():
+    return 1234
 
 
 def tutorial(args):
@@ -276,8 +281,8 @@ def tutorial(args):
         return imageArray
 
 
-def doTest():
-    """Start function"""
+def dotest():
+    # """Start function"""
     argparser = argparse.ArgumentParser(
         description='CARLA Sensor sync and projection tutorial')
     argparser.add_argument(
@@ -347,8 +352,8 @@ def doTest():
     args.dot_extent -= 1
 
     try:
-        return 123
-        #return tutorial(args)
+        return int(123)
+        #return tutorial(args)#
 
     except KeyboardInterrupt:
         print('\nCancelled by user. Bye!')
