@@ -19,22 +19,25 @@ namespace CarlaAPI{
 		*wargs = Py_DecodeLocale(*args, size);
 		//make sure python is able to see the files in the current directory
 		PySys_SetArgv(1, wargs);
-		const wchar_t* pathname = Py_GetPath();
-		const wchar_t* pathname3 = Py_GetExecPrefix();
-		const wchar_t* pathname2 = Py_GetPrefix();
-		const wchar_t* pathname4 = Py_GetProgramName();
-		if (pathname && pathname2 && pathname3 &&pathname4)
-			int i = 0;
 
 		PyObject* pName = PyUnicode_FromString("defaultPy");
 		PyObject* pModule = PyImport_Import(pName);
+        PyObject* pArgs = PyUnicode_FromString("--frames 10");
 
 		if(pModule){
-			PyObject* pFunc = PyObject_GetAttrString(pModule, "main");
+			PyObject* pFunc = PyObject_GetAttrString(pModule, "simpleReturn");
 			if(pFunc && PyCallable_Check(pFunc)){
-				PyObject* pValue = PyObject_CallObject(pFunc, NULL);
-
-				printf("C: getInteger() = %ld\n", PyLong_AsLong(pValue));
+				PyObject* pValue = PyObject_CallObject(pFunc, pArgs);
+                if (pValue) {
+                    printf("Python Script returned a: ");
+                    printf("%s",pValue->ob_type->tp_name);
+                    printf("\nIt's value is: ");
+                    printf("%ld",PyLong_AsLong(pValue));
+                }
+                else{
+                    printf("No return value from python script\n");
+                    //MyLogger::SaveToLog("No return value from Python script", MyLogger::Error);
+                }
 			}
 			else{
 				printf("ERROR: function getInteger()\n");
