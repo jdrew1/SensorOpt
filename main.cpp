@@ -1,10 +1,12 @@
 #include "mainHeader.h"
 
 int main(int argc, char **argv) {
-    InitProgram();
+    InitProgram(argv);
     //MNist::BasicMNISTPercept();
 
-	CarlaAPI::RunPyScript(argv);
+	CarlaAPI::RunPyScript();
 
+
+    CleanProgram();
     return 0;
 }

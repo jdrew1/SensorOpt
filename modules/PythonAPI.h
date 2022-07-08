@@ -8,25 +8,25 @@
 
 namespace CarlaAPI{
 	FILE* filenamePyScript;
-    static void SetupPython(){
+    static void SetupPython(char ** args){
+        Py_Initialize();
+        //format the arguments so that python can interpret them correctly:
+        wchar_t **wargs = (wchar_t**)malloc(sizeof(wchar_t *));
+        size_t * size = (size_t*)malloc(sizeof(size_t));
+        *size = sizeof(**args);
+        *wargs = Py_DecodeLocale(*args, size);
+        //make sure python is able to see the files in the current directory
+        PySys_SetArgv(1, wargs);
 	}
-	static void RunPyScript(char **args){
-		Py_Initialize();
-		//format the arguments so that python can interpret them correctly:
-		wchar_t **wargs = (wchar_t**)malloc(sizeof(wchar_t *));
-		size_t * size = (size_t*)malloc(sizeof(size_t));
-		*size = sizeof(**args);
-		*wargs = Py_DecodeLocale(*args, size);
-		//make sure python is able to see the files in the current directory
-		PySys_SetArgv(1, wargs);
+	static void RunPyScript(){
 
-		PyObject* pName = PyUnicode_FromString("defaultPy");
+		PyObject* pName = PyUnicode_FromString(SettingsFile::StringSetting("pyScriptLoc").c_str());
 		PyObject* pModule = PyImport_Import(pName);
-        PyObject* pArgs = PyUnicode_FromString("--frames 10");
+        PyObject* pArgs = PyTuple_GetItem(PyUnicode_FromString("--frames 10"),300);
 
 		if(pModule){
-			PyObject* pFunc = PyObject_GetAttrString(pModule, "simple_return");
-            if (PyCallable_Check(pFunc))
+			PyObject* pFunc = PyObject_GetAttrString(pModule, "dotest");
+            if (!PyCallable_Check(pFunc))
                 printf("function not callable\n");
 			if(pFunc && PyCallable_Check(pFunc)){
 				PyObject* pValue = PyObject_CallObject(pFunc, pArgs);
@@ -49,9 +49,10 @@ namespace CarlaAPI{
 		else{
 			printf("ERROR: Module not imported\n");
 		}
-
-		Py_Finalize();
 	}
+    static void ExitPython(){
+        Py_Finalize();
+    }
 }
 
 

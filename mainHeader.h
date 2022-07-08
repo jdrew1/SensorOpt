@@ -22,9 +22,14 @@
 
 
 
-    void InitProgram(){
+    void InitProgram(char ** arguments){
         SettingsFile::InitSettings();
         MyLogger::InitLogging();
-		CarlaAPI::SetupPython();
+		CarlaAPI::SetupPython(arguments);
+
+    }
+
+    void CleanProgram() {
+        CarlaAPI::ExitPython();
     }
 #endif
