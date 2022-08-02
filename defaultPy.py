@@ -42,6 +42,8 @@ except ImportError:
 VIRIDIS = np.array(cm.get_cmap('viridis').colors)
 VID_RANGE = np.linspace(0.0, 1.0, VIRIDIS.shape[0])
 
+calledFromTerminal = False
+
 
 def sensor_callback(data, queue):
     """
@@ -282,7 +284,7 @@ def tutorial(args):
         return imageArray
 
 
-def dotest(inputArgs):
+def dotest(inputArgs = None):
     # """Start function"""
     print(inputArgs)
     argparser = argparse.ArgumentParser(
@@ -349,7 +351,10 @@ def dotest(inputArgs):
         default='100000',
         type=int,
         help='lidar points per second (default: 100000)')
-    args = argparser.parse_args(inputArgs.split())
+    if (inputArgs == None):
+        args = argparser.parse_args()
+    else:
+        args = argparser.parse_args(inputArgs.split())
     args.width, args.height = [int(x) for x in args.res.split('x')]
     args.dot_extent -= 1
 
@@ -361,3 +366,9 @@ def dotest(inputArgs):
 
     except KeyboardInterrupt:
         print('\nCancelled by user. Bye!')
+
+
+
+if __name__ == '__main__':
+    calledFromTerminal = True
+    dotest()

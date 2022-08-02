@@ -4,7 +4,7 @@ int main(int argc, char **argv) {
     InitProgram(argv);
     //MNist::BasicMNISTPercept();
 
-	CarlaAPI::RunPyScript();
+	CarlaAPI::ParsePyObject(CarlaAPI::RunPyScript());
 
 
     CleanProgram();

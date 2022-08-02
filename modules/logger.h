@@ -19,11 +19,13 @@ namespace MyLogger{
         if (!logFile){
             logFile.open(logPath, ios::app);
             logFile << "Created new LogFile: " << ctime(&currentTime) << "----------------------------------------" << endl;
+            std::cout << "Created new LogFile: " << ctime(&currentTime) << "----------------------------------------" << endl;
         }
         else{
             logFile.close();
             logFile.open(logPath, ios::app);
             logFile << "New run of program: " << ctime(&currentTime) << "----------------------------------------" << endl;
+            std::cout << "New run of program: " << ctime(&currentTime) << "----------------------------------------" << endl;
         }
         logFile.close();
     }
@@ -57,6 +59,7 @@ namespace MyLogger{
                     break;
             }
             logFile << preface << message << endl;
+            std::cout << preface << message << endl;
         }
         logFile.close();
         return true;
