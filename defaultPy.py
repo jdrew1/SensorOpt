@@ -61,6 +61,7 @@ def tutorial(args):
     synchronous way, and project 3D points from a lidar to a 2D camera.
     """
     # Connect to the server
+    print("entered tutorial")
     client = carla.Client(args.host, args.port)
     client.set_timeout(2.0)
     world = client.get_world()
@@ -155,7 +156,7 @@ def tutorial(args):
             assert image_data.frame == lidar_data.frame == world_frame
             # At this point, we have the synchronized information from the 2 sensors.
             sys.stdout.write("\r(%d/%d) Simulation: %d Camera: %d Lidar: %d" %
-                (frame, args.frames, world_frame, image_data.frame, lidar_data.frame) + ' ')
+                             (frame, args.frames, world_frame, image_data.frame, lidar_data.frame) + ' ')
             sys.stdout.flush()
 
             # Get the raw BGRA buffer and convert it to an array of RGB of
@@ -259,13 +260,13 @@ def tutorial(args):
                     # without using this loop, so if anyone has a better solution,
                     # make sure to update this script. Meanwhile, it's fast enough :)
                     im_array[
-                        v_coord[i]-args.dot_extent : v_coord[i]+args.dot_extent,
-                        u_coord[i]-args.dot_extent : u_coord[i]+args.dot_extent] = color_map[i]
+                    v_coord[i]-args.dot_extent : v_coord[i]+args.dot_extent,
+                    u_coord[i]-args.dot_extent : u_coord[i]+args.dot_extent] = color_map[i]
 
             # Save the image using Pillow module.j
             image = Image.fromarray(im_array)
             imageArray.append(image)
-            image.save("_out/%08d.png" % image_data.frame)
+            #image.save("_out/%08d.png" % image_data.frame)
 
     finally:
         # Apply the original settings when exiting.
@@ -281,8 +282,9 @@ def tutorial(args):
         return imageArray
 
 
-def dotest():
+def dotest(inputArgs):
     # """Start function"""
+    print(inputArgs)
     argparser = argparse.ArgumentParser(
         description='CARLA Sensor sync and projection tutorial')
     argparser.add_argument(
@@ -347,13 +349,15 @@ def dotest():
         default='100000',
         type=int,
         help='lidar points per second (default: 100000)')
-    args = argparser.parse_args()
+    args = argparser.parse_args(inputArgs.split())
     args.width, args.height = [int(x) for x in args.res.split('x')]
     args.dot_extent -= 1
 
     try:
-        return int(123)
-        #return tutorial(args)#
+        #return int(123)
+        print("args parsed successfully")
+        print(args)
+        return tutorial(args)
 
     except KeyboardInterrupt:
         print('\nCancelled by user. Bye!')

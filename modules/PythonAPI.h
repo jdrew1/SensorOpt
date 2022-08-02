@@ -22,14 +22,15 @@ namespace CarlaAPI{
 
 		PyObject* pName = PyUnicode_FromString(SettingsFile::StringSetting("pyScriptLoc").c_str());
 		PyObject* pModule = PyImport_Import(pName);
-        PyObject* pArgs = PyTuple_GetItem(PyUnicode_FromString("--frames 10"),300);
+        const char * pyArgsString;
+        SettingsFile::GetSetting("pythonArgs", &pyArgsString);
 
 		if(pModule){
 			PyObject* pFunc = PyObject_GetAttrString(pModule, "dotest");
             if (!PyCallable_Check(pFunc))
                 printf("function not callable\n");
 			if(pFunc && PyCallable_Check(pFunc)){
-				PyObject* pValue = PyObject_CallObject(pFunc, pArgs);
+				PyObject* pValue = PyObject_CallFunction(pFunc, "s", pyArgsString);
                 if (pValue) {
                     printf("Python Script returned a: ");
                     printf("%s",pValue->ob_type->tp_name);
