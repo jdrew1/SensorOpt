@@ -1,4 +1,3 @@
-#pragma once
 #ifndef NEURALPROJECT_LOGGER_H
 #define NEURALPROJECT_LOGGER_H
 

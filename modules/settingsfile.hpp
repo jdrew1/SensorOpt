@@ -1,4 +1,3 @@
-#pragma once
 #ifndef NEURALPROJECT_SETTINGSFILE_H
 #define NEURALPROJECT_SETTINGSFILE_H
 #define RAPIDJSON_HAS_STDSTRING 1
@@ -33,7 +32,7 @@ namespace SettingsFile{
         return true;
     }
     static void SaveConfigFile(FileType ftype = Default){
-        const char* filepath = ftype ? "./localConfig.conf" : "./defaultConfig.conf";
+        const char* filepath = ftype ? "localConfig.conf" : "defaultConfig.conf";
 
         if (ftype ? localJson.IsNull() : defaultJson.IsNull()){
             std::cout << "Attempted to save configFile to: " << filepath << ", but no settings object exist." << std::endl;
@@ -72,7 +71,7 @@ namespace SettingsFile{
                     : defaultJson[settingName].Get<T>();
         return true;
     }
-	static std::string StringSetting(const char * settingName){
+	static std::string StringSetting(std::string settingName){
 		bool local = false;
 		if (!localJson.IsNull() && localJson.HasMember(settingName))
 			local = true;
