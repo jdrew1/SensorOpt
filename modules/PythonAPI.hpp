@@ -1,13 +1,14 @@
+#pragma once
 #ifndef NEURALPROJECT_PYTHONAPI_H
 #define NEURALPROJECT_PYTHONAPI_H
 #include <Python.h>
 #include <stdio.h>
 #include <string>
 
-#include "settingsfile.h"
+#include "settingsfile.hpp"
+#include "logger.hpp"
 
 namespace CarlaAPI{
-	FILE* filenamePyScript;
     static void SetupPython(char ** args){
         Py_Initialize();
         //format the arguments so that python can interpret them correctly:
@@ -19,9 +20,10 @@ namespace CarlaAPI{
         PySys_SetArgv(1, wargs);
 	}
 
-	PyObject* RunPyScript(std::string pyScriptLoc = SettingsFile::StringSetting("pyScriptLoc"),
-                          std::string pyFunctName = SettingsFile::StringSetting("pyFunctName"),
-                          std::string pythonArgs =  SettingsFile::StringSetting("pythonArgs")){
+	static PyObject* RunPyScript(std::string pyFunctName = SettingsFile::StringSetting("pyFunctName"),
+                          std::string pythonArgs =  SettingsFile::StringSetting("pythonArgs"),
+                          std::string pyScriptLoc = SettingsFile::StringSetting("pyScriptLoc")
+                          ){
         MyLogger::SaveToLog(("RunPyScript: Running Python Script: " +
                              pyFunctName + "(" + pythonArgs + ")").c_str(), MyLogger::Message);
 		PyObject* pName = PyUnicode_FromString(pyScriptLoc.c_str());

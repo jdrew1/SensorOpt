@@ -1,17 +1,18 @@
+#pragma once
 #ifndef NEURALPROJECT_LOGGER_H
 #define NEURALPROJECT_LOGGER_H
 
 #include <iostream>
 #include <fstream>
 #include <ctime>
-#include "settingsfile.h"
+#include "settingsfile.hpp"
 
 
 namespace MyLogger{
     using namespace std;
     static string logPath;
     enum LogType {Error=0, Warning=1, FATAL=2, IO=3, Message=4, Status=5};
-    void InitLogging(){
+    static void InitLogging(){
         time_t currentTime = time(0);
         SettingsFile::GetSetting("logfilePath", &logPath);
         fstream logFile;
@@ -29,7 +30,7 @@ namespace MyLogger{
         }
         logFile.close();
     }
-    bool SaveToLog(const char* message, LogType type){
+    static bool SaveToLog(const char* message, LogType type){
         ofstream logFile;
         logFile.open(logPath, ios::app);
         if (!logFile){

@@ -23,6 +23,7 @@ include_directories(${PROJECT_SOURCE_DIR}/lib/Eigen
 add_executable(DeepLProject
         main.cpp
         modules/network/perceptron.cpp
-        modules/MNist/MNist.cpp)
+        modules/MNist/MNist.cpp
+        modules/LiDAR/LiDAR.cpp)
 
 target_link_libraries(DeepLProject PUBLIC Python3::Python)

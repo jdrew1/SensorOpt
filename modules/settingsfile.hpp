@@ -1,8 +1,10 @@
+#pragma once
 #ifndef NEURALPROJECT_SETTINGSFILE_H
 #define NEURALPROJECT_SETTINGSFILE_H
 #define RAPIDJSON_HAS_STDSTRING 1
 
 #include <iostream>
+#include <fstream>
 #include <cstdio>
 #include <string>
 #include "rapidjson/document.h"
@@ -17,7 +19,7 @@ namespace SettingsFile{
     static Document defaultJson;
     static Document localJson;
 
-    bool ReadSettingsFile(FileType ftype = Default){
+    static bool ReadSettingsFile(FileType ftype = Default){
         const char* filepath = ftype ? "./localConfig.conf" : "./defaultConfig.conf";
         std::ifstream readFile(filepath);
         if (!readFile){
@@ -30,7 +32,7 @@ namespace SettingsFile{
 
         return true;
     }
-    void SaveConfigFile(FileType ftype = Default){
+    static void SaveConfigFile(FileType ftype = Default){
         const char* filepath = ftype ? "./localConfig.conf" : "./defaultConfig.conf";
 
         if (ftype ? localJson.IsNull() : defaultJson.IsNull()){
@@ -48,7 +50,7 @@ namespace SettingsFile{
         else defaultJson.Accept(writer);
     }
 
-    void InitSettings(){
+    static void InitSettings(){
         ReadSettingsFile(Default);
         if (!ReadSettingsFile(Local)){
             std::cout << "Init local settings" << std::endl;
@@ -57,7 +59,7 @@ namespace SettingsFile{
         }
     }
     template <typename T>
-    bool GetSetting(const char* settingName, T * in){
+    static bool GetSetting(const char* settingName, T * in){
         bool local = false;
         if (!localJson.IsNull() && localJson.HasMember(settingName))
             local = true;
@@ -70,7 +72,7 @@ namespace SettingsFile{
                     : defaultJson[settingName].Get<T>();
         return true;
     }
-	std::string StringSetting(const char * settingName){
+	static std::string StringSetting(const char * settingName){
 		bool local = false;
 		if (!localJson.IsNull() && localJson.HasMember(settingName))
 			local = true;

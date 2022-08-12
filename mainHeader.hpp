@@ -10,14 +10,15 @@
     #include "lib/rapidJSON/include/rapidjson/rapidjson.h"
     //basic files
     //--------------------------------------------------
-    #include "network/perceptron.h"
-    #include "settingsfile.h"
-    #include "logger.h"
-    #include "PythonAPI.h" 
+    #include "network/perceptron.hpp"
+    #include "settingsfile.hpp"
+    #include "logger.hpp"
+    #include "PythonAPI.hpp"
     //application specific
     //--------------------------------------------------
     #include "modules/MNist/MNist.h"
     #include "modules/MNist/DataHandling.h"
+    #include "modules/LiDAR/LiDAR.hpp"
 
 
 

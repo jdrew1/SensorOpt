@@ -1,10 +1,11 @@
-#include "mainHeader.h"
+#include "mainHeader.hpp"
 
 int main(int argc, char **argv) {
     InitProgram(argv);
     //MNist::BasicMNISTPercept();
 
-	CarlaAPI::ParsePyObject(CarlaAPI::RunPyScript());
+	LiDAR::SetupCARLA();
+    LiDAR::CloseCARLA();
 
 
     CleanProgram();
