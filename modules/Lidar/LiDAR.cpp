@@ -1,10 +1,10 @@
-#include "LiDAR.hpp"
+#include "LiDAR.h"
 
 void LiDAR::SetupCARLA(){
-    CarlaAPI::RunPyScript("setupEnvironment","");
+    CarlaAPI::RunPyScript("setupEnvironment");
 }
 void LiDAR::CloseCARLA(){
-    CarlaAPI::RunPyScript("closeEnvironment","");
+    CarlaAPI::RunPyScript("closeEnvironment");
 }
 void LiDAR::RunTest(){
 

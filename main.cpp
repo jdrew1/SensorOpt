@@ -1,4 +1,4 @@
-#include "mainHeader.hpp"
+#include "mainHeader.h"
 
 int main(int argc, char **argv) {
     InitProgram(argv);

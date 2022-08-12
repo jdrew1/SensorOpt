@@ -22,6 +22,9 @@ include_directories(${PROJECT_SOURCE_DIR}/lib/Eigen
 
 add_executable(DeepLProject
         main.cpp
+        modules/settingsfile.cpp
+        modules/logger.cpp
+        modules/PythonAPI.cpp
         modules/network/perceptron.cpp
         modules/MNist/MNist.cpp
         modules/LiDAR/LiDAR.cpp)

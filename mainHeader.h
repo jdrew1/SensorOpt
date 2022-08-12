@@ -11,14 +11,14 @@
     //basic files
     //--------------------------------------------------
     #include "network/perceptron.hpp"
-    #include "settingsfile.hpp"
-    #include "logger.hpp"
-    #include "PythonAPI.hpp"
+    #include "settingsfile.h"
+    #include "logger.h"
+    #include "PythonAPI.h"
     //application specific
     //--------------------------------------------------
     #include "modules/MNist/MNist.h"
     #include "modules/MNist/DataHandling.h"
-    #include "modules/LiDAR/LiDAR.hpp"
+    #include "Lidar/LiDAR.h"
 
 
 

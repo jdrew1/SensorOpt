@@ -2,9 +2,9 @@
 
 namespace MyLogger{
     using namespace std;
-    static void InitLogging(){
+    void InitLogging(){
         time_t currentTime = time(0);
-        SettingsFile::GetSetting("logfilePath", &logPath);
+        logPath = SettingsFile::StringSetting("logfilePath");
         fstream logFile;
         logFile.open(logPath, ios::in);
         if (!logFile){
@@ -20,7 +20,7 @@ namespace MyLogger{
         }
         logFile.close();
     }
-    static bool SaveToLog(const char* message, LogType type){
+    bool SaveToLog(const char* message, LogType type){
         ofstream logFile;
         logFile.open(logPath, ios::app);
         if (!logFile){
