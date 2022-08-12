@@ -32,17 +32,10 @@ namespace SettingsFile{
     }
     void SaveConfigFile(FileType ftype = Default){
         const char* filepath = ftype ? "./localConfig.conf" : "./defaultConfig.conf";
-        if (ftype){
-            if (localJson.IsNull()){
-                std::cout << "Attempted to save configFile to: " << filepath << ", but no settings exist." << std::endl;
-                return;
-            }
-        }
-        else{
-            if (defaultJson.IsNull()){
-                std::cout << "Attempted to save configFile to: " << filepath << ", but no settings exist." << std::endl;
-                return;
-            }
+
+        if (ftype ? localJson.IsNull() : defaultJson.IsNull()){
+            std::cout << "Attempted to save configFile to: " << filepath << ", but no settings object exist." << std::endl;
+            return;
         }
         std::ofstream writeFile(filepath);
         if (!writeFile){
@@ -68,20 +61,26 @@ namespace SettingsFile{
         bool local = false;
         if (!localJson.IsNull() && localJson.HasMember(settingName))
             local = true;
-
+        else if (!defaultJson.HasMember(settingName)) {
+            std::cout << "No setting named: " << settingName << " in default Settings file" << std::endl;
+            return false;
+        }
         *in = local ?
-                localJson[settingName].Get<T>()
-              : defaultJson[settingName].Get<T>();
+              localJson[settingName].Get<T>()
+                    : defaultJson[settingName].Get<T>();
         return true;
     }
 	std::string StringSetting(const char * settingName){
 		bool local = false;
 		if (!localJson.IsNull() && localJson.HasMember(settingName))
 			local = true;
-
-		return local ?
-			  localJson[settingName].Get<std::string>()
-					: defaultJson[settingName].Get<std::string>();
+        else if (!defaultJson.HasMember(settingName)) {
+            std::cout << "No setting named: " << settingName << " in default Settings file" << std::endl;
+            return 0;
+        }
+        return local ?
+               localJson[settingName].Get<std::string>()
+                     : defaultJson[settingName].Get<std::string>();
 	}
 }
 #endif //NEURALPROJECT_SETTINGSFILE_H
