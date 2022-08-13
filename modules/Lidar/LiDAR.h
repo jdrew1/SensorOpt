@@ -6,8 +6,8 @@
 namespace LiDAR{
 
     void SetupCARLA();
-    void CloseCARLA();
     void RunTest();
+    void CloseCARLA();
 
 
 }

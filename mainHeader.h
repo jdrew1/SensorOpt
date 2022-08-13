@@ -26,11 +26,11 @@
     void InitProgram(char ** arguments){
         SettingsFile::InitSettings();
         MyLogger::InitLogging();
-		CarlaAPI::SetupPython(arguments);
+		PythonAPI::SetupPython(arguments);
 
     }
 
     void CleanProgram() {
-        CarlaAPI::ExitPython();
+        PythonAPI::ExitPython();
     }
 #endif

@@ -7,14 +7,15 @@
 #include "settingsfile.h"
 #include "logger.h"
 
-namespace CarlaAPI{
+namespace PythonAPI{
     void SetupPython(char ** args);
 
 	PyObject* RunPyScript(std::string pyFunctName = SettingsFile::StringSetting("pyFunctName"),
                           std::string pythonArgs =  SettingsFile::StringSetting("pythonArgs"),
+                          PyObject * inputObject = nullptr,
                           std::string pyScriptLoc = SettingsFile::StringSetting("pyScriptLoc"));
 
-    void ParsePyObject(PyObject* toParse = RunPyScript());
+    std::string GetPyObjectFormat(PyObject* toParse = RunPyScript(), std::string buildup = "");
     void ExitPython();
 }
 
