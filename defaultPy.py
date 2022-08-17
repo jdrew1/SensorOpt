@@ -59,8 +59,11 @@ def setupEnvironment(inputstring = ""):
     lidar_bp.set_attribute('points_per_second', '500000')
 
 
-def trainLoop(inputstring = "0,0,0"):
-    lidar_init_trans = carla.Transform(carla.Location(z=2))
+def trainLoop(inputstring = "X:0.0,Y:0.0,Z:0.0"):
+    coords = [float(inputstring.split(',')[0].split(':')[1]),
+              float(inputstring.split(',')[1].split(':')[1]),
+              float(inputstring.split(',')[2].split(':')[1])]
+    lidar_init_trans = carla.Transform(carla.Location(x=coords[0], y=coords[1], z=coords[2]))
     global lidar
     lidar = world.spawn_actor(lidar_bp, lidar_init_trans, attach_to=vehicle)
     point_list = o3d.geometry.PointCloud()

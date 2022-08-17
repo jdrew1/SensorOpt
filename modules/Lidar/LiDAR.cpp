@@ -49,8 +49,8 @@ namespace LiDAR{
         yOffset = network->neurons.back()->coeffRef(1);
         zOffset = network->neurons.back()->coeffRef(2);
 
-        return "--xOffset " + std::to_string(xOffset)
-             + " --yOffset " + std::to_string(yOffset)
-             + " --xOffset " + std::to_string(zOffset);
+        return "X:" + std::to_string(xOffset)
+             + ",Y:" + std::to_string(yOffset)
+             + ",Z:" + std::to_string(zOffset);
     }
 }
