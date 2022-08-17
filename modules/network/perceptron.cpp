@@ -1,4 +1,4 @@
-#include "perceptron.hpp"
+#include "perceptron.h"
 
 using namespace Eigen;
 

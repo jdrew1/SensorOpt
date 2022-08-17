@@ -9,6 +9,8 @@ Using Neural Networks and Generative Adversarial Networks.
 This is a program created by Jordan Ambs as a Bachelor Thesis for the
 University of Applied Sciences Ravensburg-Weingarten (a.k.a RWU)
 
+Currently, the CARLA simulator must be running before the program is started.
+
 ====================Build====================
 =============================================
 STEP 1 *****IMPORTANT*****

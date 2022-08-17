@@ -2,6 +2,7 @@ import argparse
 import carla
 import random
 import open3d as o3d
+import time
 import numpy as np
 
 # Global variables
@@ -12,14 +13,18 @@ global lidar_bp
 global lidar
 global vehicle
 global args
+global spectator
 
 
-def setupEnvironment(inputstring):
+def setupEnvironment(inputstring = ""):
     # Connect the client and set up bp library and spawn point
     global client
     client = carla.Client(args.host, args.port)
     global world
     world = client.get_world()
+    world.unload_map_layer(carla.MapLayer.Buildings)
+    world.unload_map_layer(carla.MapLayer.Foliage)
+    world.unload_map_layer(carla.MapLayer.Particles)
     global bp_lib
     bp_lib = world.get_blueprint_library()
     spawn_points = world.get_map().get_spawn_points()
@@ -30,6 +35,7 @@ def setupEnvironment(inputstring):
     vehicle = world.try_spawn_actor(vehicle_bp, spawn_points[79])
 
     # Move spectator to view ego vehicle
+    global spectator
     spectator = world.get_spectator()
     transform = carla.Transform(vehicle.get_transform().transform(carla.Location(x=-4, z=2.5)), vehicle.get_transform().rotation)
     spectator.set_transform(transform)
@@ -52,36 +58,43 @@ def setupEnvironment(inputstring):
     lidar_bp.set_attribute('points_per_second', '500000')
 
 
-def trainLoop(inputargs):
-    if inputargs is tuple:
-        args = inputargs[0]
-        inputstring = inputargs[1]
-    print(inputargs)
-    print(args)
-    print(inputstring)
-
+def trainLoop(inputstring = "0,0,0"):
     lidar_init_trans = carla.Transform(carla.Location(z=2))
     global lidar
     lidar = world.spawn_actor(lidar_bp, lidar_init_trans, attach_to=vehicle)
-    # Add auxilliary data structures
     point_list = o3d.geometry.PointCloud()
-    # Start sensors
     lidar.listen(lambda data: lidar_callback(data, point_list))
+    time.sleep(0.5)
+    print(inputstring)
+    print("lidar spawned")
+    # Add auxilliary data structures
+    # Start sensors
+    print("collecting lidar data")
+    print(point_list)
+    print("destroying lidar\n\n\n")
+    lidar.stop()
+    lidar.destroy()
     return point_list
 
 
 # LIDAR callback
 def lidar_callback(point_cloud, point_list):
-    """Prepares a point cloud with intensity
-    colors ready to be consumed by Open3D"""
+
+    """reshape to an array of n 4d points [n,4]"""
     data = np.copy(np.frombuffer(point_cloud.raw_data, dtype=np.dtype('f4')))
     data = np.reshape(data, (int(data.shape[0] / 4), 4))
+
+    """lidar returns x-y-z-d, discard d for x-y-z"""
     points = data[:, :-1]
+
+    """reverse y axis to change from unreal coords to carla coords"""
     points[:, :1] = -points[:, :1]
+
     point_list.points = o3d.utility.Vector3dVector(points)
 
 
-def closeEnvironment():
+def closeEnvironment(stringInput = ""):
+    global lidar
     try:
         lidar.stop()
         lidar.destroy()
@@ -113,7 +126,7 @@ def parseArguments(inputArgs = None):
     argparser.add_argument(
         '-t', '--traffic',
         metavar='T',
-        default=True,
+        default=False,
         type=bool,
         help='choose whether to spawn traffic in sim')
     global args
@@ -124,6 +137,9 @@ def parseArguments(inputArgs = None):
 
 
 if __name__ == '__main__':
-    setupEnvironment(parseArguments())
-    trainLoop(parseArguments())
+    parseArguments()
+    setupEnvironment("")
+    for i in range(10):
+        trainLoop()
+        time.sleep(0.1)
     closeEnvironment()

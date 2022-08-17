@@ -1,16 +1,58 @@
 #include "LiDAR.h"
 
-void LiDAR::SetupCARLA(){
-    PyObject * args = PythonAPI::RunPyScript("parseArguments","-t False");
-    PythonAPI::RunPyScript("setupEnvironment","",args);
-    //PythonAPI::GetPyObjectFormat(PythonAPI::RunPyScript("trainLoop","0,0,0",args));
-}
-void LiDAR::RunTest(){
-    //PyObject * coordinates = Py_BuildValue("s", &coords);
-    //PyCapsule_SetName(coordinates, "coords");
-    //PyObject * inputData = Py_BuildValue("ss", coordinates, inputObject);
-    //PythonAPI::RunPyScript("trainLoop","",inputData);
-}
-void LiDAR::CloseCARLA(){
-    PythonAPI::RunPyScript("closeEnvironment");
+namespace LiDAR{
+
+    void SetupCARLA(){
+        PythonAPI::RunPyScript("parseArguments", "-t False");
+        PythonAPI::RunPyScript("setupEnvironment", "");
+    }
+    void RunTest(){
+        std::vector<int> settingtopology;
+        std::string layer;
+        std::stringstream networkshape = std::stringstream(SettingsFile::StringSetting("networkShape"));
+        while(getline(networkshape,layer, ':'))
+            settingtopology.push_back(std::stoi(layer));
+        for(int i = 0; i < settingtopology.size();i++)
+            std::cout << settingtopology[i] << std::endl;
+        Perceptron network = Perceptron(settingtopology);
+
+
+    }
+    void CloseCARLA(){
+        PythonAPI::RunPyScript("closeEnvironment","");
+    }
+
+    Eigen::RowVectorXf CarlaToNetwork(PyObject * fromCarla){
+        if(PythonAPI::GetPyObjectFormat(fromCarla) != "open3d.cpu.pybind.geometry.PointCloud") {
+            MyLogger::SaveToLog(("Unexpected return type from Carla:"
+                                + PythonAPI::GetPyObjectFormat(fromCarla)).c_str(),MyLogger::FATAL);
+            return Eigen::RowVectorXf(0);
+        }
+        PyObject * pointCollection = PyObject_GetAttrString(fromCarla,"points");
+        Eigen::RowVectorXf  output = Eigen::RowVectorXf(PySequence_Length(pointCollection)*3);
+        PyObject * pointContainer;
+        for(int i = 0; i < PySequence_Length(pointCollection); i ++){
+            pointContainer = PySequence_GetItem(pointCollection, i);
+            output.coeffRef(3*i) = PyFloat_AsDouble(PyObject_GetAttrString(pointContainer, "X"));
+            output.coeffRef(3*i+1) = PyFloat_AsDouble(PyObject_GetAttrString(pointContainer, "Y"));
+            output.coeffRef(3*i+2) = PyFloat_AsDouble(PyObject_GetAttrString(pointContainer, "Z"));
+        }
+        return output;
+
+    }
+    std::string NetworkToCarla(Perceptron * network){
+        float xOffset = 0.0, yOffset = 0.0, zOffset = 0.0;
+        if (network->topology.back() != 3){
+            MyLogger::SaveToLog("NetworkToCarla: Network output wrong dimension{3}: " + network->topology.back(),MyLogger::FATAL);
+            return "";
+        }
+        xOffset = network->neurons.back()->coeffRef(0);
+        yOffset = network->neurons.back()->coeffRef(1);
+        zOffset = network->neurons.back()->coeffRef(2);
+        char *output;
+        sprintf(output,"--xOffset %f8 --yOffset %f8 --xOffset %f8 ", xOffset, yOffset, zOffset);
+
+
+        return output;
+    }
 }

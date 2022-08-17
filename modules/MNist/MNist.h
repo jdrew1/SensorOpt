@@ -5,7 +5,7 @@
 #include <iostream>
 #include <vector>
 #include "Eigen/Eigen"
-#include "network/perceptron.hpp"
+#include "network/perceptron.h"
 
 namespace MNist{
     std::vector<Eigen::RowVectorXf *> ConvertMNISTImageData(std::ifstream dataFile);

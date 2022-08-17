@@ -4,13 +4,20 @@
     //--------------------------------------------------
     #include <iostream>
     #include <vector>
+    #include <stdio.h>
+    #ifdef __APPLE__
+        #ifdef TARGET_OS_MAC
+        //#include <>
+        #endif
+    #elif _WIN32
+    #endif
     //dependencies
     //--------------------------------------------------
     #include "lib/Eigen/Eigen/Eigen"
     #include "lib/rapidJSON/include/rapidjson/rapidjson.h"
     //basic files
     //--------------------------------------------------
-    #include "network/perceptron.hpp"
+    #include "network/perceptron.h"
     #include "settingsfile.h"
     #include "logger.h"
     #include "PythonAPI.h"
@@ -27,6 +34,7 @@
         SettingsFile::InitSettings();
         MyLogger::InitLogging();
 		PythonAPI::SetupPython(arguments);
+        //FILE * carla = popen(SettingsFile::StringSetting("pathToCarla").c_str(),"r");
 
     }
 
