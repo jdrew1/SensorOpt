@@ -18,6 +18,7 @@ global spectator
 
 def setupEnvironment(inputstring = ""):
     # Connect the client and set up bp library and spawn point
+    global args
     global client
     client = carla.Client(args.host, args.port)
     global world
@@ -42,11 +43,11 @@ def setupEnvironment(inputstring = ""):
 
     # Add traffic and set in motion with Traffic Manager
     if args.traffic:
-        for i in range(100):
+        for j in range(100):
             vehicle_bp = random.choice(bp_lib.filter('vehicle'))
             npc = world.try_spawn_actor(vehicle_bp, random.choice(spawn_points))
-    for v in world.get_actors().filter('*vehicle*'):
-        v.set_autopilot(True)
+        for v in world.get_actors().filter('*vehicle*'):
+            v.set_autopilot(True)
     global lidar_bp
     lidar_bp = bp_lib.find('sensor.lidar.ray_cast')
     lidar_bp.set_attribute('range', '100.0')
@@ -71,7 +72,7 @@ def trainLoop(inputstring = "0,0,0"):
     # Start sensors
     print("collecting lidar data")
     print(point_list)
-    print("destroying lidar\n\n\n")
+    print("destroying lidar\n")
     lidar.stop()
     lidar.destroy()
     return point_list
@@ -114,21 +115,17 @@ def parseArguments(inputArgs = None):
         description='CARLA Sensor sync and projection tutorial')
     argparser.add_argument(
         '--host',
-        metavar='H',
         default='127.0.0.1',
         help='IP of the host server (default: 127.0.0.1)')
     argparser.add_argument(
         '-p', '--port',
-        metavar='P',
         default=2000,
         type=int,
         help='TCP port to listen to (default: 2000)')
     argparser.add_argument(
         '-t', '--traffic',
-        metavar='T',
-        default=False,
-        type=bool,
-        help='choose whether to spawn traffic in sim')
+        help='enable traffic during simulation',
+        action="store_true")
     global args
     if inputArgs is None:
         args = argparser.parse_args()

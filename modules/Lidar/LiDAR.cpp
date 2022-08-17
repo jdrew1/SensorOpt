@@ -3,7 +3,7 @@
 namespace LiDAR{
 
     void SetupCARLA(){
-        PythonAPI::RunPyScript("parseArguments", "-t False");
+        PythonAPI::RunPyScript("parseArguments", "");
         PythonAPI::RunPyScript("setupEnvironment", "");
     }
     void RunTest(){
@@ -12,11 +12,9 @@ namespace LiDAR{
         std::stringstream networkshape = std::stringstream(SettingsFile::StringSetting("networkShape"));
         while(getline(networkshape,layer, ':'))
             settingtopology.push_back(std::stoi(layer));
-        for(int i = 0; i < settingtopology.size();i++)
-            std::cout << settingtopology[i] << std::endl;
         Perceptron network = Perceptron(settingtopology);
-
-
+        Eigen::RowVectorXf output;
+        output = CarlaToNetwork(PythonAPI::RunPyScript("trainLoop",""));
     }
     void CloseCARLA(){
         PythonAPI::RunPyScript("closeEnvironment","");
@@ -43,7 +41,8 @@ namespace LiDAR{
     std::string NetworkToCarla(Perceptron * network){
         float xOffset = 0.0, yOffset = 0.0, zOffset = 0.0;
         if (network->topology.back() != 3){
-            MyLogger::SaveToLog("NetworkToCarla: Network output wrong dimension{3}: " + network->topology.back(),MyLogger::FATAL);
+            MyLogger::SaveToLog(("NetworkToCarla: Network output wrong dimension{3}: "
+                                + std::to_string(network->topology.back())).c_str(),MyLogger::FATAL);
             return "";
         }
         xOffset = network->neurons.back()->coeffRef(0);
