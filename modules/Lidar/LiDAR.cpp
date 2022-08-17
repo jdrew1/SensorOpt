@@ -12,9 +12,9 @@ namespace LiDAR{
         std::stringstream networkshape = std::stringstream(SettingsFile::StringSetting("networkShape"));
         while(getline(networkshape,layer, ':'))
             settingtopology.push_back(std::stoi(layer));
-        Perceptron network = Perceptron(settingtopology);
-        Eigen::RowVectorXf output;
-        output = CarlaToNetwork(PythonAPI::RunPyScript("trainLoop",""));
+        Perceptron *network = new Perceptron(settingtopology);
+        std::string carlaInput = NetworkToCarla(network);
+        Eigen::RowVectorXf output = CarlaToNetwork(PythonAPI::RunPyScript("trainLoop",carlaInput));
     }
     void CloseCARLA(){
         PythonAPI::RunPyScript("closeEnvironment","");
@@ -48,10 +48,9 @@ namespace LiDAR{
         xOffset = network->neurons.back()->coeffRef(0);
         yOffset = network->neurons.back()->coeffRef(1);
         zOffset = network->neurons.back()->coeffRef(2);
-        char *output;
-        sprintf(output,"--xOffset %f8 --yOffset %f8 --xOffset %f8 ", xOffset, yOffset, zOffset);
 
-
-        return output;
+        return "--xOffset " + std::to_string(xOffset)
+             + " --yOffset " + std::to_string(yOffset)
+             + " --xOffset " + std::to_string(zOffset);
     }
 }

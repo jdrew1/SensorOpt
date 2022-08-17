@@ -66,13 +66,8 @@ def trainLoop(inputstring = "0,0,0"):
     point_list = o3d.geometry.PointCloud()
     lidar.listen(lambda data: lidar_callback(data, point_list))
     time.sleep(0.5)
-    print(inputstring)
-    print("lidar spawned")
     # Add auxilliary data structures
     # Start sensors
-    print("collecting lidar data")
-    print(point_list)
-    print("destroying lidar\n")
     lidar.stop()
     lidar.destroy()
     return point_list
@@ -95,17 +90,11 @@ def lidar_callback(point_cloud, point_list):
 
 
 def closeEnvironment(stringInput = ""):
-    global lidar
-    try:
-        lidar.stop()
-        lidar.destroy()
-    except:
-        print("no lidar to destroy")
-
     global world
     for actor in world.get_actors().filter('*vehicle*'):
         actor.destroy()
     for actor in world.get_actors().filter('*sensor*'):
+        actor.stop()
         actor.destroy()
 
 
