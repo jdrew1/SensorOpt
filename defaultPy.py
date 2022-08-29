@@ -4,6 +4,7 @@ import random
 import open3d as o3d
 import time
 import numpy as np
+import math
 
 # Global variables
 global client
@@ -14,6 +15,8 @@ global lidar
 global vehicle
 global args
 global spectator
+global spawn_points
+global rand_spawn_point
 
 
 def setupEnvironment(inputstring = ""):
@@ -23,22 +26,19 @@ def setupEnvironment(inputstring = ""):
     client = carla.Client(args.host, args.port)
     global world
     world = client.get_world()
-    world.unload_map_layer(carla.MapLayer.Buildings)
-    world.unload_map_layer(carla.MapLayer.Foliage)
-    world.unload_map_layer(carla.MapLayer.Particles)
+    world.unload_map_layer(carla.MapLayer.All)
+    world.load_map_layer(carla.MapLayer.Ground)
     global bp_lib
     bp_lib = world.get_blueprint_library()
+    global spawn_points
     spawn_points = world.get_map().get_spawn_points()
-
-    # Add vehicle
-    vehicle_bp = bp_lib.find('vehicle.lincoln.mkz_2020')
-    global vehicle
-    vehicle = world.try_spawn_actor(vehicle_bp, spawn_points[79])
+    global rand_spawn_point
+    rand_spawn_point = random.randint(0, len(spawn_points))
 
     # Move spectator to view ego vehicle
     global spectator
     spectator = world.get_spectator()
-    transform = carla.Transform(vehicle.get_transform().transform(carla.Location(x=-4, z=2.5)), vehicle.get_transform().rotation)
+    transform = carla.Transform(spawn_points[rand_spawn_point].transform(carla.Location(x=-4, z=2.5)), carla.Rotation())
     spectator.set_transform(transform)
 
     # Add traffic and set in motion with Traffic Manager
@@ -59,21 +59,45 @@ def setupEnvironment(inputstring = ""):
     lidar_bp.set_attribute('points_per_second', '500000')
 
 
-def trainLoop(inputstring = "X:0.0,Y:0.0,Z:0.0"):
-    coords = [float(inputstring.split(',')[0].split(':')[1]),
-              float(inputstring.split(',')[1].split(':')[1]),
-              float(inputstring.split(',')[2].split(':')[1])]
-    lidar_init_trans = carla.Transform(carla.Location(x=coords[0], y=coords[1], z=coords[2]))
-    global lidar
-    lidar = world.spawn_actor(lidar_bp, lidar_init_trans, attach_to=vehicle)
-    point_list = o3d.geometry.PointCloud()
-    lidar.listen(lambda data: lidar_callback(data, point_list))
-    time.sleep(0.5)
-    # Add auxilliary data structures
-    # Start sensors
-    lidar.stop()
-    lidar.destroy()
-    return point_list
+def place_cylinder_and_car(inputstring = "D:10.0,S:10"):
+    distance = float(inputstring.split(',')[0].split(':')[1])
+    step = int(inputstring.split(',')[1].split(':')[1])
+    global spawn_points
+    global vehicle
+    global bp_lib
+    global rand_spawn_point
+    # Add vehicle
+    vehicle_bp = bp_lib.find('vehicle.lincoln.mkz_2020')
+    vehicle = world.try_spawn_actor(vehicle_bp, spawn_points[rand_spawn_point])
+    # Spawn test cylinder
+    box_bp = bp_lib.filter('box02*')[0]
+    for theta in range(0, 360, step):
+        for height in range(0, 6):
+            world.try_spawn_actor(box_bp,
+                                  carla.Transform(
+                                      spawn_points[rand_spawn_point].transform(
+                                          carla.Location(
+                                              x= distance * math.cos(theta*math.pi/180),
+                                              y= distance * math.sin(theta*math.pi/180),
+                                              z= height*0.5-1)),
+                                  carla.Rotation(yaw=theta))
+                                  )
+
+
+def find_car_mesh():
+    return
+
+
+def place_sensors(inputstring = "X:0.0,Y:0.0,Z:0.0"):
+    return
+
+
+def fetch_lidar_measurement():
+    return
+
+
+def clean_for_next_iteration():
+    return
 
 
 # LIDAR callback
@@ -118,6 +142,11 @@ def parseArguments(inputArgs = None):
         '-t', '--traffic',
         help='enable traffic during simulation',
         action="store_true")
+    argparser.add_argument(
+        '-d', '--distance',
+        default=20.0,
+        type=float,
+        help='distance to test cylinder')
     global args
     if inputArgs is None:
         args = argparser.parse_args()
