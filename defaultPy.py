@@ -1,10 +1,12 @@
 import argparse
 import carla
 import random
-import open3d as o3d
+import open3d
 import time
 import numpy as np
+from matplotlib import cm
 import math
+import threading
 
 # Global variables
 global client
@@ -33,7 +35,7 @@ def setupEnvironment(inputstring = ""):
     global spawn_points
     spawn_points = world.get_map().get_spawn_points()
     global rand_spawn_point
-    rand_spawn_point = random.randint(0, len(spawn_points))
+    rand_spawn_point = random.randint(0, len(spawn_points)-1)
 
     # Move spectator to view ego vehicle
     global spectator
@@ -59,20 +61,21 @@ def setupEnvironment(inputstring = ""):
     lidar_bp.set_attribute('points_per_second', '500000')
 
 
-def place_cylinder_and_car(inputstring = "D:10.0,S:10"):
+def place_cylinder_and_car(inputstring = "D:10.0,S:2"):
     distance = float(inputstring.split(',')[0].split(':')[1])
     step = int(inputstring.split(',')[1].split(':')[1])
     global spawn_points
     global vehicle
     global bp_lib
-    global rand_spawn_point
     # Add vehicle
     vehicle_bp = bp_lib.find('vehicle.lincoln.mkz_2020')
+    global spawn_points
+    global rand_spawn_point
     vehicle = world.try_spawn_actor(vehicle_bp, spawn_points[rand_spawn_point])
     # Spawn test cylinder
     box_bp = bp_lib.filter('box02*')[0]
     for theta in range(0, 360, step):
-        for height in range(0, 6):
+        for height in range(0, 1):
             world.try_spawn_actor(box_bp,
                                   carla.Transform(
                                       spawn_points[rand_spawn_point].transform(
@@ -80,11 +83,49 @@ def place_cylinder_and_car(inputstring = "D:10.0,S:10"):
                                               x= distance * math.cos(theta*math.pi/180),
                                               y= distance * math.sin(theta*math.pi/180),
                                               z= height*0.5-1)),
-                                  carla.Rotation(yaw=theta))
+                                      carla.Rotation(yaw=theta))
                                   )
 
 
-def find_car_mesh():
+def find_car_mesh(inputstring = "N:3000,D:10.0"):
+    network_size = int(inputstring.split(',')[0].split(':')[1])
+    distance = float(inputstring.split(',')[1].split(':')[1])
+    # spawn sensor
+    global world
+    global bp_lib
+    global lidar
+    global lidar_bp
+    global spawn_points
+    global rand_spawn_point
+    car_lidar = world.spawn_actor(lidar_bp, spawn_points[rand_spawn_point])
+    # car_lidar.set_transform()
+    test_transform = carla.Transform(
+                    spawn_points[rand_spawn_point].transform(
+                        carla.Location(
+                            x= distance,
+                            z= 3)),
+                    carla.Rotation(yaw=180))
+
+    global bp_lib
+    box_bp = bp_lib.filter('box03*')[0]
+    camera_box = world.try_spawn_actor(box_bp, test_transform)
+    lidar = world.try_spawn_actor(lidar_bp, carla.Transform(carla.Location(z=0.5)), attach_to=camera_box)
+    # place sensor
+
+    # measure while rotating around car
+    for theta in range(50000):
+        tempTransform = carla.Transform(spawn_points[rand_spawn_point].transform(carla.Location(
+                                        x= distance * math.cos(theta*math.pi/180),
+                                        y= distance * math.sin(theta*math.pi/180),
+                                        z= 3
+                                        )),
+                                        carla.Rotation(yaw=theta))
+        camera_box.set_transform(tempTransform)
+        time.sleep(0.01)
+
+    # filter for only points on the car
+
+    # trim length to size of network input layer
     return
 
 
@@ -102,18 +143,29 @@ def clean_for_next_iteration():
 
 # LIDAR callback
 def lidar_callback(point_cloud, point_list):
+    # Auxilliary code for colormaps and axes
+    VIRIDIS = np.array(cm.get_cmap('plasma').colors)
+    VID_RANGE = np.linspace(0.0, 1.0, VIRIDIS.shape[0])
 
     """reshape to an array of n 4d points [n,4]"""
     data = np.copy(np.frombuffer(point_cloud.raw_data, dtype=np.dtype('f4')))
     data = np.reshape(data, (int(data.shape[0] / 4), 4))
 
+    # Isolate the intensity and compute a color for it
+    intensity = data[:, -1]
+    intensity_col = 1.0 - np.log(intensity) / np.log(np.exp(-0.004 * 100))
+    int_color = np.c_[
+        np.interp(intensity_col, VID_RANGE, VIRIDIS[:, 0]),
+        np.interp(intensity_col, VID_RANGE, VIRIDIS[:, 1]),
+        np.interp(intensity_col, VID_RANGE, VIRIDIS[:, 2])]
     """lidar returns x-y-z-d, discard d for x-y-z"""
     points = data[:, :-1]
 
     """reverse y axis to change from unreal coords to carla coords"""
     points[:, :1] = -points[:, :1]
 
-    point_list.points = o3d.utility.Vector3dVector(points)
+    point_list.points = open3d.utility.Vector3dVector(points)
+    point_list.colors = open3d.utility.Vector3dVector(int_color)
 
 
 def closeEnvironment(stringInput = ""):
@@ -123,6 +175,46 @@ def closeEnvironment(stringInput = ""):
     for actor in world.get_actors().filter('*sensor*'):
         actor.stop()
         actor.destroy()
+
+
+def debugVisualizer(stringInput= ""):
+    time.sleep(1.0)
+
+    point_list = open3d.geometry.PointCloud()
+
+    global lidar
+    lidar.listen(lambda data: lidar_callback(data, point_list))
+
+    vis = open3d.visualization.VisualizerWithKeyCallback()
+
+    windowOpen = True
+
+    def keyCallback(vis, action, mods):
+        nonlocal windowOpen
+        windowOpen = False
+        vis.close()
+        return True
+
+    vis.register_key_action_callback(32, keyCallback)
+    vis.create_window(
+        window_name='Carla Lidar',
+        width=960,
+        height=540,
+        left=480,
+        top=270)
+    vis.get_render_option().background_color = [0.05, 0.05, 0.05]
+    vis.get_render_option().point_size = 1
+    vis.get_render_option().show_coordinate_frame = True
+
+    frame = 0
+    while windowOpen:
+        if frame == 2:
+            vis.add_geometry(point_list)
+        vis.update_geometry(point_list)
+        vis.poll_events()
+        vis.update_renderer()
+        time.sleep(0.005)
+        frame += 1
 
 
 def parseArguments(inputArgs = None):
@@ -157,7 +249,9 @@ def parseArguments(inputArgs = None):
 if __name__ == '__main__':
     parseArguments()
     setupEnvironment("")
-    for i in range(10):
-        trainLoop()
-        time.sleep(0.1)
-    closeEnvironment()
+    place_cylinder_and_car()
+    thr1 = threading.Thread(target=find_car_mesh)
+    thr1.start()
+    debugVisualizer()
+    thr1.join()
+    # closeEnvironment()
