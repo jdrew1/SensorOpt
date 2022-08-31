@@ -13,6 +13,7 @@ global client
 global world
 global bp_lib
 global lidar_bp
+global car_lidar
 global lidar
 global vehicle
 global args
@@ -93,40 +94,43 @@ def find_car_mesh(inputstring = "N:3000,D:10.0"):
     # spawn sensor
     global world
     global bp_lib
-    global lidar
     global lidar_bp
     global spawn_points
     global rand_spawn_point
-    car_lidar = world.spawn_actor(lidar_bp, spawn_points[rand_spawn_point])
-    # car_lidar.set_transform()
-    test_transform = carla.Transform(
-                    spawn_points[rand_spawn_point].transform(
-                        carla.Location(
-                            x= distance,
-                            z= 3)),
-                    carla.Rotation(yaw=180))
-
-    global bp_lib
-    box_bp = bp_lib.filter('box03*')[0]
-    camera_box = world.try_spawn_actor(box_bp, test_transform)
-    lidar = world.try_spawn_actor(lidar_bp, carla.Transform(carla.Location(z=0.5)), attach_to=camera_box)
+    global vehicle
     # place sensor
-
+    car_lidar_bp = bp_lib.find('sensor.lidar.ray_cast_semantic')
+    global car_lidar
+    car_lidar = world.spawn_actor(car_lidar_bp, spawn_points[rand_spawn_point])
     # measure while rotating around car
-    for theta in range(50000):
-        tempTransform = carla.Transform(spawn_points[rand_spawn_point].transform(carla.Location(
-                                        x= distance * math.cos(theta*math.pi/180),
-                                        y= distance * math.sin(theta*math.pi/180),
-                                        z= 3
-                                        )),
-                                        carla.Rotation(yaw=theta))
-        camera_box.set_transform(tempTransform)
+    point_cloud = open3d.geometry.PointCloud()
+
+    # car_lidar.listen(lambda data: lidar_car_callback(data, point_cloud, vehicle.semantic_tags[0]))
+    for theta in range(720):
+        car_lidar.set_transform(carla.Transform(spawn_points[rand_spawn_point].transform(carla.Location(
+                                                    x= distance * math.cos(theta*math.pi/180),
+                                                    y= distance * math.sin(theta*math.pi/180),
+                                                    z= 3
+                                                )),
+                                carla.Rotation(yaw=theta)))
         time.sleep(0.01)
 
     # filter for only points on the car
 
     # trim length to size of network input layer
     return
+
+
+def lidar_car_callback(point_cloud, point_list, vehicle_index):
+    points = []
+    for detection in point_cloud:
+        if detection.object_tag == vehicle_index:
+            points.append(detection.point)
+    data = np.copy(np.frombuffer(point_cloud.raw_data, dtype=np.dtype('f4')))
+    data = np.reshape(data, (int(data.shape[0]/3), 3))
+    data[:, :1] = -data[:, :1]
+    point_list.points = open3d.utility.Vector3dVector(data)
+    point_list.paint_uniform_color([1.0,1.0,1.0])
 
 
 def place_sensors(inputstring = "X:0.0,Y:0.0,Z:0.0"):
@@ -143,21 +147,9 @@ def clean_for_next_iteration():
 
 # LIDAR callback
 def lidar_callback(point_cloud, point_list):
-    # Auxilliary code for colormaps and axes
-    VIRIDIS = np.array(cm.get_cmap('plasma').colors)
-    VID_RANGE = np.linspace(0.0, 1.0, VIRIDIS.shape[0])
-
     """reshape to an array of n 4d points [n,4]"""
     data = np.copy(np.frombuffer(point_cloud.raw_data, dtype=np.dtype('f4')))
     data = np.reshape(data, (int(data.shape[0] / 4), 4))
-
-    # Isolate the intensity and compute a color for it
-    intensity = data[:, -1]
-    intensity_col = 1.0 - np.log(intensity) / np.log(np.exp(-0.004 * 100))
-    int_color = np.c_[
-        np.interp(intensity_col, VID_RANGE, VIRIDIS[:, 0]),
-        np.interp(intensity_col, VID_RANGE, VIRIDIS[:, 1]),
-        np.interp(intensity_col, VID_RANGE, VIRIDIS[:, 2])]
     """lidar returns x-y-z-d, discard d for x-y-z"""
     points = data[:, :-1]
 
@@ -165,7 +157,6 @@ def lidar_callback(point_cloud, point_list):
     points[:, :1] = -points[:, :1]
 
     point_list.points = open3d.utility.Vector3dVector(points)
-    point_list.colors = open3d.utility.Vector3dVector(int_color)
 
 
 def closeEnvironment(stringInput = ""):
@@ -182,8 +173,9 @@ def debugVisualizer(stringInput= ""):
 
     point_list = open3d.geometry.PointCloud()
 
-    global lidar
-    lidar.listen(lambda data: lidar_callback(data, point_list))
+    global car_lidar
+    global vehicle
+    car_lidar.listen(lambda data: lidar_car_callback(data, point_list, vehicle.semantic_tags[0]))
 
     vis = open3d.visualization.VisualizerWithKeyCallback()
 
