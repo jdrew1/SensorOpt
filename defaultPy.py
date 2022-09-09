@@ -101,37 +101,43 @@ def find_car_mesh(inputstring = "N:3000,D:10.0"):
     # place sensor
     car_lidar_bp = bp_lib.find('sensor.lidar.ray_cast_semantic')
     global car_lidar
-    car_lidar = world.spawn_actor(car_lidar_bp, spawn_points[rand_spawn_point])
+    car_lidar = world.spawn_actor(car_lidar_bp, carla.Transform(spawn_points[rand_spawn_point].transform(carla.Location(x=distance, z=4))))
     # measure while rotating around car
-    point_cloud = open3d.geometry.PointCloud()
+    total_points = open3d.geometry.PointCloud()
+    single_detection = open3d.geometry.PointCloud()
 
-    # car_lidar.listen(lambda data: lidar_car_callback(data, point_cloud, vehicle.semantic_tags[0]))
+    car_lidar.listen(lambda data: lidar_car_callback(data, single_detection, car_lidar.get_transform(), vehicle.semantic_tags[0]))
     for theta in range(720):
         car_lidar.set_transform(carla.Transform(spawn_points[rand_spawn_point].transform(carla.Location(
                                                     x= distance * math.cos(theta*math.pi/180),
                                                     y= distance * math.sin(theta*math.pi/180),
-                                                    z= 3
-                                                )),
-                                carla.Rotation(yaw=theta)))
+                                                    z= 4
+                                                ))))
+        if single_detection.has_points():
+            if open3d.geometry.PointCloud(total_points).is_empty():
+                total_points = single_detection
+            else:
+                temp_array = np.vstack((np.asarray(single_detection.points), np.asarray(open3d.geometry.PointCloud(total_points).points)))
+                total_points = open3d.utility.Vector3dVector(temp_array)
+
         time.sleep(0.01)
-
-    # filter for only points on the car
-
-    # trim length to size of network input layer
-    return
+    car_lidar.stop()
+    return total_points
 
 
-def lidar_car_callback(point_cloud, point_list, vehicle_index):
+def lidar_car_callback(point_cloud, point_list, sensor_transform, vehicle_index):
     points = []
+    # filter for points touching car
     for detection in point_cloud:
         if detection.object_tag == vehicle_index:
-            points.append(detection.point.x)
+            points.append(sensor_transform.transform(detection.point).x)
+            # for some reason, transforming the y coordinate causes smearing of the point cloud
             points.append(detection.point.y)
-            points.append(detection.point.z)
+            points.append(sensor_transform.transform(detection.point).z)
+    # shape point array into open 3d point cloud
     data = np.array(points, float)
     data = data.reshape((int(data.size/3), 3))
-    print(data.shape)
-    data[:, :1] = -data[:, :1]
+    data[:, :1] = (-data[:, :1])
     point_list.points = open3d.utility.Vector3dVector(data)
     point_list.paint_uniform_color([1.0, 1.0, 1.0])
 
@@ -171,15 +177,11 @@ def closeEnvironment(stringInput = ""):
         actor.destroy()
 
 
-def debugVisualizer(stringInput= ""):
+def debugVisualizer(point_list):
     time.sleep(1.0)
-
-    point_list = open3d.geometry.PointCloud()
 
     global car_lidar
     global vehicle
-    car_lidar.listen(lambda data: lidar_car_callback(data, point_list, vehicle.semantic_tags[0]))
-
     vis = open3d.visualization.VisualizerWithKeyCallback()
 
     windowOpen = True
@@ -203,11 +205,11 @@ def debugVisualizer(stringInput= ""):
 
     frame = False
     while windowOpen:
-        if not frame and not point_list.is_empty():
-            vis.add_geometry(point_list)
+        if not frame and not open3d.geometry.PointCloud(point_list).is_empty():
+            vis.add_geometry(open3d.geometry.PointCloud(point_list))
             frame = True
         if frame:
-            vis.update_geometry(point_list)
+            vis.update_geometry(open3d.geometry.PointCloud(point_list))
         vis.poll_events()
         vis.update_renderer()
         time.sleep(0.005)
@@ -246,8 +248,6 @@ if __name__ == '__main__':
     parseArguments()
     setupEnvironment("")
     place_cylinder_and_car()
-    thr1 = threading.Thread(target=find_car_mesh)
-    thr1.start()
-    debugVisualizer()
-    thr1.join()
+    list_of_points = find_car_mesh()
+    debugVisualizer(list_of_points)
     # closeEnvironment()
