@@ -125,12 +125,15 @@ def lidar_car_callback(point_cloud, point_list, vehicle_index):
     points = []
     for detection in point_cloud:
         if detection.object_tag == vehicle_index:
-            points.append(detection.point)
-    data = np.copy(np.frombuffer(point_cloud.raw_data, dtype=np.dtype('f4')))
-    data = np.reshape(data, (int(data.shape[0]/3), 3))
+            points.append(detection.point.x)
+            points.append(detection.point.y)
+            points.append(detection.point.z)
+    data = np.array(points, float)
+    data = data.reshape((int(data.size/3), 3))
+    print(data.shape)
     data[:, :1] = -data[:, :1]
     point_list.points = open3d.utility.Vector3dVector(data)
-    point_list.paint_uniform_color([1.0,1.0,1.0])
+    point_list.paint_uniform_color([1.0, 1.0, 1.0])
 
 
 def place_sensors(inputstring = "X:0.0,Y:0.0,Z:0.0"):
@@ -198,15 +201,16 @@ def debugVisualizer(stringInput= ""):
     vis.get_render_option().point_size = 1
     vis.get_render_option().show_coordinate_frame = True
 
-    frame = 0
+    frame = False
     while windowOpen:
-        if frame == 2:
+        if not frame and not point_list.is_empty():
             vis.add_geometry(point_list)
-        vis.update_geometry(point_list)
+            frame = True
+        if frame:
+            vis.update_geometry(point_list)
         vis.poll_events()
         vis.update_renderer()
         time.sleep(0.005)
-        frame += 1
 
 
 def parseArguments(inputArgs = None):
