@@ -13,7 +13,7 @@ namespace LiDAR{
     void RunTest();
     void CloseCARLA();
 
-    Eigen::RowVectorXf CarlaToNetwork(PyObject * fromCarla);
+    Eigen::RowVectorXf CarlaToNetwork(PyObject * fromCarla, int networkInputSize);
     std::string NetworkToCarla(Perceptron * network);
 
 }

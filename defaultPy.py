@@ -62,9 +62,8 @@ def setupEnvironment(inputstring = ""):
     lidar_bp.set_attribute('points_per_second', '500000')
 
 
-def place_cylinder_and_car(inputstring = "D:10.0,S:2"):
+def place_cylinder_and_car(inputstring = "D:10.0"):
     distance = float(inputstring.split(',')[0].split(':')[1])
-    step = int(inputstring.split(',')[1].split(':')[1])
     global spawn_points
     global vehicle
     global bp_lib
@@ -75,7 +74,7 @@ def place_cylinder_and_car(inputstring = "D:10.0,S:2"):
     vehicle = world.try_spawn_actor(vehicle_bp, spawn_points[rand_spawn_point])
     # Spawn test cylinder
     box_bp = bp_lib.filter('box02*')[0]
-    for theta in range(0, 360, step):
+    for theta in range(0, 360, 2):
         for height in range(0, 1):
             world.try_spawn_actor(box_bp,
                                   carla.Transform(
@@ -88,9 +87,8 @@ def place_cylinder_and_car(inputstring = "D:10.0,S:2"):
                                   )
 
 
-def find_car_mesh(inputstring = "N:3000,D:10.0"):
-    network_size = int(inputstring.split(',')[0].split(':')[1])
-    distance = float(inputstring.split(',')[1].split(':')[1])
+def find_car_mesh(inputstring = ""):
+    distance = 8.5
     # spawn sensor
     global world
     global bp_lib
@@ -98,7 +96,7 @@ def find_car_mesh(inputstring = "N:3000,D:10.0"):
     global spawn_points
     global rand_spawn_point
     global vehicle
-    # place sensor
+    # place semantic sensor
     car_lidar_bp = bp_lib.find('sensor.lidar.ray_cast_semantic')
     global car_lidar
     car_lidar = world.spawn_actor(car_lidar_bp, carla.Transform(spawn_points[rand_spawn_point].transform(carla.Location(x=distance, z=4))))
@@ -113,6 +111,7 @@ def find_car_mesh(inputstring = "N:3000,D:10.0"):
                                                     y= distance * math.sin(theta*math.pi/180),
                                                     z= 4
                                                 ))))
+        # if points were collected, add them to the output
         if single_detection.has_points():
             if open3d.geometry.PointCloud(total_points).is_empty():
                 total_points = single_detection
@@ -122,7 +121,8 @@ def find_car_mesh(inputstring = "N:3000,D:10.0"):
 
         time.sleep(0.01)
     car_lidar.stop()
-    return total_points
+    car_lidar.destroy()
+    return open3d.geometry.PointCloud(total_points)
 
 
 def lidar_car_callback(point_cloud, point_list, sensor_transform, vehicle_index):
@@ -184,6 +184,8 @@ def debugVisualizer(point_list):
     global vehicle
     vis = open3d.visualization.VisualizerWithKeyCallback()
 
+    # point_list.paint_uniform_color([0.0, 0.0, 0.0])
+
     windowOpen = True
 
     def keyCallback(vis, action, mods):
@@ -199,7 +201,7 @@ def debugVisualizer(point_list):
         height=540,
         left=480,
         top=270)
-    vis.get_render_option().background_color = [0.05, 0.05, 0.05]
+    vis.get_render_option().background_color = [1.0, 1.0, 1.0]
     vis.get_render_option().point_size = 1
     vis.get_render_option().show_coordinate_frame = True
 

@@ -43,6 +43,7 @@ namespace PythonAPI{
         if (buildup != "")
             buildup.append(":");
         buildup.append(toParse->ob_type->tp_name);
+        MyLogger::SaveToLog(("Python Object Interpreted: " + buildup).c_str(), MyLogger::Message);
         return buildup;
     }
 
