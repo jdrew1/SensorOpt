@@ -16,11 +16,15 @@ namespace LiDAR{
             settingTopology.push_back(std::stoi(layer));
         //multiply the first layer by three to separate the x,y,z coordinates
         settingTopology.front() = settingTopology.front()*3;
+        //make sure the final layer of the network has correct length
+        settingTopology.push_back(std::stoi(SettingsFile::StringSetting("numberOfLiDAR"))*3);
         Perceptron *network = new Perceptron(settingTopology);
         //fetch the input to the network (point cloud of vehicle)
         Eigen::RowVectorXf carMesh = CarlaToNetwork(
-                PythonAPI::RunPyScript("find_car_mesh", ""),
-                network->topology.front());
+                                                    PythonAPI::RunPyScript("find_car_mesh", ""),
+                                                    network->topology.front());
+        //use the network to determine the output
+        network->ForwardProp(carMesh);
 
         std::string carlaInput = NetworkToCarla(network);
     }
@@ -47,35 +51,43 @@ namespace LiDAR{
             output.coeffRef(3*i+1) = PyFloat_AsDouble(PyObject_GetAttrString(pointContainer, "Y"));
             output.coeffRef(3*i+2) = PyFloat_AsDouble(PyObject_GetAttrString(pointContainer, "Z"));
         }
-        //trim the eigen vector to have the same size as the network
         std::srand(std::time(0));
+        //trim the eigen vector to have the same size as the network
         while (output.size() > networkInputSize){
+            //pick a random point to avoid biasing the front of the array
             int randIndex = std::rand() % ((networkInputSize/3)-1);
-            Eigen::RowVectorXf tempA = output.block(0,0,1,randIndex*3);
+            Eigen::RowVectorXf tempA = output.block(0,0,output.rows(),randIndex*3);
             Eigen::RowVectorXf tempB = output.block(0,randIndex*3+3,output.rows(),output.cols()-(randIndex*3+3));
             output = Eigen::RowVectorXf(tempA.cols() + tempB.cols());
             output << tempA, tempB;
         }
+        //otherwise pad the vector with zeroes
         while (output.size() < networkInputSize){
-            Eigen::RowVectorXf temp = Eigen::RowVectorXf(networkInputSize);
-            temp << output, Eigen::RowVectorXf::Zero((networkInputSize) - output.size());
-            output = temp;
+            //pick a random point to avoid biasing the front of the array
+            int randIndex = std::rand() % ((output.size()/3)-1);
+            Eigen::RowVectorXf tempA = output.block(0,0,output.rows(),randIndex*3);
+            Eigen::RowVectorXf tempB = output.block(0,randIndex*3,output.rows(),output.cols()-(randIndex*3));
+            output = Eigen::RowVectorXf(tempA.cols() + tempB.cols() + 3);
+            output << tempA, Eigen::RowVectorXf::Zero(3), tempB;
         }
         return output;
     }
     std::string NetworkToCarla(Perceptron * network){
-        float xOffset = 0.0, yOffset = 0.0, zOffset = 0.0;
-        if (network->topology.back() != 3){
-            MyLogger::SaveToLog(("NetworkToCarla: Network output wrong dimension{3}: "
+        int numberOfLidar = std::stoi(SettingsFile::StringSetting("numberOfLiDAR"));
+        if (network->topology.back() != numberOfLidar*3){
+            MyLogger::SaveToLog(("NetworkToCarla: Network output wrong dimension{"
+                                + std::to_string(numberOfLidar*3)
+                                + "}: "
                                 + std::to_string(network->topology.back())).c_str(),MyLogger::FATAL);
             return "";
         }
-        xOffset = network->neurons.back()->coeffRef(0);
-        yOffset = network->neurons.back()->coeffRef(1);
-        zOffset = network->neurons.back()->coeffRef(2);
-
-        return "X:" + std::to_string(xOffset)
-             + ",Y:" + std::to_string(yOffset)
-             + ",Z:" + std::to_string(zOffset);
+        std::string output;
+        for (int i = 0; i < numberOfLidar; i++){
+            output += "|";
+            output += "X:" + std::to_string(network->neurons.back()->coeffRef(i*3+0));
+            output += ",Y:" + std::to_string(network->neurons.back()->coeffRef(i*3+1));
+            output += ",Z:" + std::to_string(network->neurons.back()->coeffRef(i*3+2));
+        }
+        return output;
     }
 }
