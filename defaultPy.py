@@ -147,18 +147,20 @@ def lidar_car_callback(point_cloud, point_list, sensor_transform, vehicle_index)
     point_list.paint_uniform_color([1.0, 1.0, 1.0])
 
 
-def place_sensors(inputstring = "X:0.0,Y:0.0,Z:0.0"):
+def place_sensors(inputstring = "0.0,0.0,0.0"):
     global vehicle_points
     global lidar
     global lidar_bp
+    global spawn_points
+    global rand_spawn_point
     numberOfPoints = inputstring.count('|') + 1
     # place sensors one by one:
     for i in range(numberOfPoints):
         # interpret the points from the input string
         coords = np.array(
-                          [float(inputstring.split('|')[i].split(',')[0].split(':')[1]),
-                           float(inputstring.split('|')[i].split(',')[1].split(':')[1]),
-                           float(inputstring.split('|')[i].split(',')[2].split(':')[1])]
+                          [float(inputstring.split('|')[i].split(',')[0]),
+                           float(inputstring.split('|')[i].split(',')[1]),
+                           float(inputstring.split('|')[i].split(',')[2])]
                          )
         coords = coords.reshape((1, 3))
         # find the closest point on car to desired location
@@ -173,14 +175,12 @@ def place_sensors(inputstring = "X:0.0,Y:0.0,Z:0.0"):
                 distance_to_closest_point = distance_map[point]
         # use the normal map to offset the sensor a bit off the car
         vehicle_points.estimate_normals()
-        # use the original coordinate as a direction to make sure the normal is facing the right way
-        # (outside the vehicle)
         vehicle_points.orient_normals_to_align_with_direction(vehicle_points.points[closest_point_index])
         # spawn the sensor
         lidar = world.try_spawn_actor(lidar_bp, carla.Transform(carla.Location(
-                            x=vehicle_points.points[closest_point_index][0] + vehicle_points.normals[closest_point_index][0],
-                            y=vehicle_points.points[closest_point_index][1] + vehicle_points.normals[closest_point_index][1],
-                            z=vehicle_points.points[closest_point_index][2] + vehicle_points.normals[closest_point_index][2]))
+                            x=vehicle_points.points[closest_point_index][0] + 0.1*vehicle_points.normals[closest_point_index][0] + spawn_points[rand_spawn_point].location.x,
+                            y=vehicle_points.points[closest_point_index][1] + 0.1*vehicle_points.normals[closest_point_index][1] + spawn_points[rand_spawn_point].location.y,
+                            z=vehicle_points.points[closest_point_index][2] + 0.1*vehicle_points.normals[closest_point_index][2] + spawn_points[rand_spawn_point].location.z))
                                       )
         # spawn the occlusion box for the sensor
     return  # list of sensors
@@ -228,16 +228,14 @@ def closeEnvironment(stringInput = ""):
 def debugVisualizer(stringInput = ""):
     time.sleep(1.0)
 
+    global spawn_points
+    global rand_spawn_point
     global vehicle_points
     point_list = open3d.geometry.PointCloud()
     global lidar
     lidar.listen(lambda data: lidar_callback(data, point_list))
     vis = open3d.visualization.VisualizerWithKeyCallback()
 
-    print("lidar transform coords")
-    print(lidar.get_transform().location.x)
-    print(lidar.get_transform().location.y)
-    print(lidar.get_transform().location.z)
     # point_list.paint_uniform_color([0.0, 0.0, 0.0])
 
     windowOpen = True
@@ -262,10 +260,10 @@ def debugVisualizer(stringInput = ""):
     """Add a small 3D axis on Open3D Visualizer"""
     axis = open3d.geometry.LineSet()
     axis.points = open3d.utility.Vector3dVector(np.array([
-        [0.0 + lidar.get_transform().location.x, 0.0 + lidar.get_transform().location.y, 0.0 + lidar.get_transform().location.z],
-        [1.0 + lidar.get_transform().location.x, 0.0 + lidar.get_transform().location.y, 0.0 + lidar.get_transform().location.z],
-        [0.0 + lidar.get_transform().location.x, 1.0 + lidar.get_transform().location.y, 0.0 + lidar.get_transform().location.z],
-        [0.0 + lidar.get_transform().location.x, 0.0 + lidar.get_transform().location.y, 1.0 + lidar.get_transform().location.z]]))
+        [0.0 + lidar.get_transform().location.x - spawn_points[rand_spawn_point].location.x, 0.0 + lidar.get_transform().location.y - spawn_points[rand_spawn_point].location.y, 0.0 + lidar.get_transform().location.z - spawn_points[rand_spawn_point].location.z],
+        [1.0 + lidar.get_transform().location.x - spawn_points[rand_spawn_point].location.x, 0.0 + lidar.get_transform().location.y - spawn_points[rand_spawn_point].location.y, 0.0 + lidar.get_transform().location.z - spawn_points[rand_spawn_point].location.z],
+        [0.0 + lidar.get_transform().location.x - spawn_points[rand_spawn_point].location.x, 1.0 + lidar.get_transform().location.y - spawn_points[rand_spawn_point].location.y, 0.0 + lidar.get_transform().location.z - spawn_points[rand_spawn_point].location.z],
+        [0.0 + lidar.get_transform().location.x - spawn_points[rand_spawn_point].location.x, 0.0 + lidar.get_transform().location.y - spawn_points[rand_spawn_point].location.y, 1.0 + lidar.get_transform().location.z - spawn_points[rand_spawn_point].location.z]]))
     axis.lines = open3d.utility.Vector2iVector(np.array([
         [0, 1],
         [0, 2],
@@ -323,8 +321,5 @@ if __name__ == '__main__':
     place_cylinder_and_car()
     find_car_mesh()
     place_sensors()
-    thr1 = threading.Thread(target=find_car_mesh)
-    thr1.start()
     debugVisualizer()
-    thr1.join()
     # closeEnvironment()

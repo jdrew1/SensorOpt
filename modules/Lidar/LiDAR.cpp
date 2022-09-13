@@ -83,14 +83,14 @@ namespace LiDAR{
             return "";
         }
         std::string output;
-        output += "X:" + std::to_string(network->neurons.back()->coeffRef(0));
-        output += ",Y:" + std::to_string(network->neurons.back()->coeffRef(1));
-        output += ",Z:" + std::to_string(network->neurons.back()->coeffRef(2));
+        output += std::to_string(network->neurons.back()->coeffRef(0));
+        output += "," + std::to_string(network->neurons.back()->coeffRef(1));
+        output += "," + std::to_string(network->neurons.back()->coeffRef(2));
         for (int i = 1; i < numberOfLidar; i++){
             output += "|";
-            output += "X:" + std::to_string(network->neurons.back()->coeffRef(i*3+0));
-            output += ",Y:" + std::to_string(network->neurons.back()->coeffRef(i*3+1));
-            output += ",Z:" + std::to_string(network->neurons.back()->coeffRef(i*3+2));
+            output += "" + std::to_string(network->neurons.back()->coeffRef(i*3+0));
+            output += "," + std::to_string(network->neurons.back()->coeffRef(i*3+1));
+            output += "," + std::to_string(network->neurons.back()->coeffRef(i*3+2));
         }
         return output;
     }
