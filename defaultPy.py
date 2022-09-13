@@ -76,7 +76,7 @@ def place_cylinder_and_car(inputstring = "D:10.0"):
     # Spawn test cylinder
     box_bp = bp_lib.filter('box02*')[0]
     for theta in range(0, 360, 2):
-        for height in range(0, 1):
+        for height in range(0, 6):
             world.try_spawn_actor(box_bp,
                                   carla.Transform(
                                       spawn_points[rand_spawn_point].transform(
@@ -225,13 +225,19 @@ def closeEnvironment(stringInput = ""):
         actor.destroy()
 
 
-def debugVisualizer(point_list):
+def debugVisualizer(stringInput = ""):
     time.sleep(1.0)
 
-    global car_lidar
-    global vehicle
+    global vehicle_points
+    point_list = open3d.geometry.PointCloud()
+    global lidar
+    lidar.listen(lambda data: lidar_callback(data, point_list))
     vis = open3d.visualization.VisualizerWithKeyCallback()
 
+    print("lidar transform coords")
+    print(lidar.get_transform().location.x)
+    print(lidar.get_transform().location.y)
+    print(lidar.get_transform().location.z)
     # point_list.paint_uniform_color([0.0, 0.0, 0.0])
 
     windowOpen = True
@@ -256,10 +262,10 @@ def debugVisualizer(point_list):
     """Add a small 3D axis on Open3D Visualizer"""
     axis = open3d.geometry.LineSet()
     axis.points = open3d.utility.Vector3dVector(np.array([
-        [0.0, 0.0, 0.0],
-        [1.0, 0.0, 0.0],
-        [0.0, 1.0, 0.0],
-        [0.0, 0.0, 1.0]]))
+        [0.0 + lidar.get_transform().location.x, 0.0 + lidar.get_transform().location.y, 0.0 + lidar.get_transform().location.z],
+        [1.0 + lidar.get_transform().location.x, 0.0 + lidar.get_transform().location.y, 0.0 + lidar.get_transform().location.z],
+        [0.0 + lidar.get_transform().location.x, 1.0 + lidar.get_transform().location.y, 0.0 + lidar.get_transform().location.z],
+        [0.0 + lidar.get_transform().location.x, 0.0 + lidar.get_transform().location.y, 1.0 + lidar.get_transform().location.z]]))
     axis.lines = open3d.utility.Vector2iVector(np.array([
         [0, 1],
         [0, 2],
@@ -270,16 +276,16 @@ def debugVisualizer(point_list):
         [0.0, 0.0, 1.0]]))
     vis.add_geometry(axis)
 
-    frame = False
+    frame = 0
     while windowOpen:
-        if not frame and not open3d.geometry.PointCloud(point_list).is_empty():
-            vis.add_geometry(open3d.geometry.PointCloud(point_list))
-            frame = True
-        if frame:
-            vis.update_geometry(open3d.geometry.PointCloud(point_list))
+        if frame == 2:
+            vis.add_geometry(point_list)
+            vis.add_geometry(vehicle_points)
+        vis.update_geometry(point_list)
         vis.poll_events()
         vis.update_renderer()
         time.sleep(0.005)
+        frame += 1
 
 
 def parseArguments(inputArgs = None):
@@ -315,6 +321,10 @@ if __name__ == '__main__':
     parseArguments()
     setupEnvironment("")
     place_cylinder_and_car()
-    list_of_points = find_car_mesh()
-    debugVisualizer(list_of_points)
+    find_car_mesh()
+    place_sensors()
+    thr1 = threading.Thread(target=find_car_mesh)
+    thr1.start()
+    debugVisualizer()
+    thr1.join()
     # closeEnvironment()
