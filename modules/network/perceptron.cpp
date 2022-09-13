@@ -43,7 +43,7 @@ double Perceptron::Activation(double x) {
         case sigmoid:
             return 1.0 / (1.0 + std::exp(-x));
         case abovezero:
-            if (x > 0.0) return x;
+            if (x >= 0.0) return x;
             return 0.0;
         default:
             return 0;
@@ -71,8 +71,9 @@ void Perceptron::ForwardProp(Eigen::RowVectorXf &input) {
 
     //propagate forward
     for (int i=1;i<topology.size();i++){
-        //do the forward calculation
+        //do the forward calculation for each layer using the weights matrix
         neurons[i]->block(0,0,1,topology[i]) = (*neurons[i-1] * *weights[i-1]).block(0,0,1,topology[i]);
+        //clamp the neurons according to the activation function
         for (int j=0;j<topology[i];j++)
             neurons[i]->coeffRef(j) = Activation(neurons[i]->coeffRef(j));
     }

@@ -16,6 +16,7 @@ global lidar_bp
 global car_lidar
 global lidar
 global vehicle
+global vehicle_points
 global args
 global spectator
 global spawn_points
@@ -96,6 +97,7 @@ def find_car_mesh(inputstring = ""):
     global spawn_points
     global rand_spawn_point
     global vehicle
+    global vehicle_points
     # place semantic sensor
     car_lidar_bp = bp_lib.find('sensor.lidar.ray_cast_semantic')
     global car_lidar
@@ -122,7 +124,10 @@ def find_car_mesh(inputstring = ""):
         time.sleep(0.01)
     car_lidar.stop()
     car_lidar.destroy()
-    return open3d.geometry.PointCloud(total_points)
+    # format output point cloud and move to open-3d origin
+    vehicle_points = open3d.geometry.PointCloud(total_points)
+    vehicle_points.translate([0, 0, 0], False)
+    return vehicle_points
 
 
 def lidar_car_callback(point_cloud, point_list, sensor_transform, vehicle_index):
@@ -143,14 +148,57 @@ def lidar_car_callback(point_cloud, point_list, sensor_transform, vehicle_index)
 
 
 def place_sensors(inputstring = "X:0.0,Y:0.0,Z:0.0"):
-    return
+    global vehicle_points
+    global lidar
+    global lidar_bp
+    numberOfPoints = inputstring.count('|') + 1
+    # place sensors one by one:
+    for i in range(numberOfPoints):
+        # interpret the points from the input string
+        coords = np.array(
+                          [float(inputstring.split('|')[i].split(',')[0].split(':')[1]),
+                           float(inputstring.split('|')[i].split(',')[1].split(':')[1]),
+                           float(inputstring.split('|')[i].split(',')[2].split(':')[1])]
+                         )
+        coords = coords.reshape((1, 3))
+        # find the closest point on car to desired location
+        distance_map = vehicle_points.compute_point_cloud_distance(
+                       open3d.geometry.PointCloud(open3d.utility.Vector3dVector(coords))
+                                                                  )
+        closest_point_index = 0
+        distance_to_closest_point = 100000.0
+        for point in range(len(distance_map)):
+            if distance_map[point] < distance_to_closest_point:
+                closest_point_index = point
+                distance_to_closest_point = distance_map[point]
+        # use the normal map to offset the sensor a bit off the car
+        vehicle_points.estimate_normals()
+        # use the original coordinate as a direction to make sure the normal is facing the right way
+        # (outside the vehicle)
+        vehicle_points.orient_normals_to_align_with_direction(vehicle_points.points[closest_point_index])
+        # spawn the sensor
+        lidar = world.try_spawn_actor(lidar_bp, carla.Transform(carla.Location(
+                            x=vehicle_points.points[closest_point_index][0] + vehicle_points.normals[closest_point_index][0],
+                            y=vehicle_points.points[closest_point_index][1] + vehicle_points.normals[closest_point_index][1],
+                            z=vehicle_points.points[closest_point_index][2] + vehicle_points.normals[closest_point_index][2]))
+                                      )
+        # spawn the occlusion box for the sensor
+    return  # list of sensors
 
 
 def fetch_lidar_measurement():
-    return
+    # start listening to the sensors
+
+    # collect all points for a time
+
+    # filter for points on the cylinder
+
+    return  # list of points to calc objective function
 
 
 def clean_for_next_iteration():
+    # stop and delete sensors from vehicle
+    # delete vehicle and spawn a new one(?)
     return
 
 
@@ -201,9 +249,26 @@ def debugVisualizer(point_list):
         height=540,
         left=480,
         top=270)
-    vis.get_render_option().background_color = [1.0, 1.0, 1.0]
+    vis.get_render_option().background_color = [0.2, 0.2, 0.2]
     vis.get_render_option().point_size = 1
     vis.get_render_option().show_coordinate_frame = True
+
+    """Add a small 3D axis on Open3D Visualizer"""
+    axis = open3d.geometry.LineSet()
+    axis.points = open3d.utility.Vector3dVector(np.array([
+        [0.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [0.0, 0.0, 1.0]]))
+    axis.lines = open3d.utility.Vector2iVector(np.array([
+        [0, 1],
+        [0, 2],
+        [0, 3]]))
+    axis.colors = open3d.utility.Vector3dVector(np.array([
+        [1.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [0.0, 0.0, 1.0]]))
+    vis.add_geometry(axis)
 
     frame = False
     while windowOpen:

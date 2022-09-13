@@ -27,6 +27,7 @@ namespace LiDAR{
         network->ForwardProp(carMesh);
 
         std::string carlaInput = NetworkToCarla(network);
+        PythonAPI::RunPyScript("place_sensors",carlaInput);
     }
     void CloseCARLA(){
         PythonAPI::RunPyScript("closeEnvironment","");
@@ -82,7 +83,10 @@ namespace LiDAR{
             return "";
         }
         std::string output;
-        for (int i = 0; i < numberOfLidar; i++){
+        output += "X:" + std::to_string(network->neurons.back()->coeffRef(0));
+        output += ",Y:" + std::to_string(network->neurons.back()->coeffRef(1));
+        output += ",Z:" + std::to_string(network->neurons.back()->coeffRef(2));
+        for (int i = 1; i < numberOfLidar; i++){
             output += "|";
             output += "X:" + std::to_string(network->neurons.back()->coeffRef(i*3+0));
             output += ",Y:" + std::to_string(network->neurons.back()->coeffRef(i*3+1));
