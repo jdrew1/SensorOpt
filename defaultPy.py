@@ -236,7 +236,7 @@ def debugVisualizer(stringInput = ""):
     lidar.listen(lambda data: lidar_callback(data, point_list))
     vis = open3d.visualization.VisualizerWithKeyCallback()
 
-    # point_list.paint_uniform_color([0.0, 0.0, 0.0])
+    point_list.paint_uniform_color([0.0, 0.0, 0.0])
 
     windowOpen = True
 
@@ -253,7 +253,7 @@ def debugVisualizer(stringInput = ""):
         height=540,
         left=480,
         top=270)
-    vis.get_render_option().background_color = [0.2, 0.2, 0.2]
+    vis.get_render_option().background_color = [1.0, 1.0, 1.0]
     vis.get_render_option().point_size = 1
     vis.get_render_option().show_coordinate_frame = True
 
@@ -278,7 +278,7 @@ def debugVisualizer(stringInput = ""):
     while windowOpen:
         if frame == 2:
             vis.add_geometry(point_list)
-            vis.add_geometry(vehicle_points)
+            # vis.add_geometry(vehicle_points)
         vis.update_geometry(point_list)
         vis.poll_events()
         vis.update_renderer()

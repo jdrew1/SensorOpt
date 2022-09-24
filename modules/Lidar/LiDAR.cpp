@@ -25,6 +25,8 @@ namespace LiDAR{
                                                     network->topology.front());
         //use the network to determine the output
         network->ForwardProp(carMesh);
+        //network only returns [-1,1] so scale the points according to the bounding box of the car
+        ScalePointToVehicleBoundingBox(network, carMesh);
 
         std::string carlaInput = NetworkToCarla(network);
         PythonAPI::RunPyScript("place_sensors",carlaInput);
@@ -93,5 +95,44 @@ namespace LiDAR{
             output += "," + std::to_string(network->neurons.back()->coeffRef(i*3+2));
         }
         return output;
+    }
+    void ScalePointToVehicleBoundingBox(Perceptron * network, Eigen::RowVectorXf points){
+        int numberOfLidar = std::stoi(SettingsFile::StringSetting("numberOfLiDAR"));
+        float xMax, yMax, zMax, xMin, yMin, zMin, x, y, z;
+        xMax = xMin = points.coeffRef(0);
+        yMax = yMin = points.coeffRef(1);
+        zMax = zMin = points.coeffRef(2);
+
+        std::cout << "xmin: " << xMin << " : " << xMax << std::endl;
+        std::cout << "ymin: " << yMin << " : " << yMax << std::endl;
+        std::cout << "zmin: " << zMin << " : " << zMax << std::endl;
+        std::cout << "After: " <<std::endl;
+        for (int i =3; i < points.size(); i +=3){
+            if (points.coeffRef(i) < xMin)   xMin = points.coeffRef(i);
+            if (points.coeffRef(i+1) < yMin) yMin = points.coeffRef(i+1);
+            if (points.coeffRef(i+2) < zMin) zMin = points.coeffRef(i+2);
+            if (points.coeffRef(i) > xMax)   xMax = points.coeffRef(i);
+            if (points.coeffRef(i+1) > yMax) yMax = points.coeffRef(i+1);
+            if (points.coeffRef(i+2) > zMax) zMax = points.coeffRef(i+2);
+
+        }
+        std::cout << "xmin: " << xMin << " : " << xMax << std::endl;
+        std::cout << "ymin: " << yMin << " : " << yMax << std::endl;
+        std::cout << "zmin: " << zMin << " : " << zMax << std::endl;
+        x = xMax - xMin;
+        y = yMax - yMin;
+        z = zMax - zMin;
+        std::cout << "x range: " << x << std::endl;
+        std::cout << "y range: " << y << std::endl;
+        std::cout << "z range: " << z << std::endl;
+        for (int i = 0; i < numberOfLidar; i ++){
+            std::cout << "number of lidar points: " << numberOfLidar << std::endl;
+            std::cout << "before scale : " << network->neurons.back()->coeffRef(0) << network->neurons.back()->coeffRef(1) << network->neurons.back()->coeffRef(2) << std::endl;
+            network->neurons.back()->coeffRef(3*i)   = network->neurons.back()->coeffRef(3*i)   * x;
+            network->neurons.back()->coeffRef(3*i+1) = network->neurons.back()->coeffRef(3*i+1) * y;
+            network->neurons.back()->coeffRef(3*i+2) = network->neurons.back()->coeffRef(3*i+2) * z;
+
+            std::cout << "after scale : " << network->neurons.back()->coeffRef(0) << network->neurons.back()->coeffRef(1) << network->neurons.back()->coeffRef(2) << std::endl;
+        }
     }
 }

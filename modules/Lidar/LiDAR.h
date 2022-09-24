@@ -15,6 +15,7 @@ namespace LiDAR{
 
     Eigen::RowVectorXf CarlaToNetwork(PyObject * fromCarla, int networkInputSize);
     std::string NetworkToCarla(Perceptron * network);
+    void ScalePointToVehicleBoundingBox(Perceptron * network, Eigen::RowVectorXf points);
 
 }
 #endif
