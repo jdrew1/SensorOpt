@@ -55,7 +55,7 @@ def setupEnvironment(inputstring = ""):
     global lidar_bp
     lidar_bp = bp_lib.find('sensor.lidar.ray_cast')
     lidar_bp.set_attribute('range', '100.0')
-    lidar_bp.set_attribute('noise_stddev', '0.1')
+    lidar_bp.set_attribute('noise_stddev', '0.0')
     lidar_bp.set_attribute('upper_fov', '15.0')
     lidar_bp.set_attribute('lower_fov', '-25.0')
     lidar_bp.set_attribute('channels', '64.0')
@@ -186,13 +186,31 @@ def place_sensors(inputstring = "0.0,0.0,0.0"):
     return  # list of sensors
 
 
-def fetch_lidar_measurement():
+def fetch_lidar_measurement(inputstring = ""):
+    global spawn_points
+    global rand_spawn_point
+    global vehicle
     # start listening to the sensors
-
-    # collect all points for a time
-
+    total_points = open3d.geometry.PointCloud()
+    single_detection = open3d.geometry.PointCloud()
+    lidar.listen(lambda data: lidar_callback(data, single_detection))
+    # if points were collected, add them to the output
+    while len(total_points.points) < 10000:
+        if single_detection.has_points():
+            if open3d.geometry.PointCloud(total_points).is_empty():
+                total_points = single_detection
+            else:
+                temp_array = np.vstack((np.asarray(single_detection.points), np.asarray(open3d.geometry.PointCloud(total_points).points)))
+                total_points = open3d.utility.Vector3dVector(temp_array)
+            time.sleep(0.01)
+    lidar.stop()
+    total_points.translate([0, 0, 0], False)
     # filter for points on the cylinder
+    # convert points to cylindrical coordinates [r, theta, z]
+    temp_points = np.asarray(total_points.points)
 
+
+        # discard any points not at the correct distance
     return  # list of points to calc objective function
 
 
@@ -216,7 +234,12 @@ def lidar_callback(point_cloud, point_list):
     point_list.points = open3d.utility.Vector3dVector(points)
 
 
-def closeEnvironment(stringInput = ""):
+def fetch_vehicle_bounding_box(inputstring = ""):
+    global vehicle
+    return vehicle.bounding_box.extent
+
+
+def closeEnvironment(inputstring = ""):
     global world
     for actor in world.get_actors().filter('*vehicle*'):
         actor.destroy()
@@ -225,7 +248,7 @@ def closeEnvironment(stringInput = ""):
         actor.destroy()
 
 
-def debugVisualizer(stringInput = ""):
+def debugVisualizer(inputstring = ""):
     time.sleep(1.0)
 
     global spawn_points
