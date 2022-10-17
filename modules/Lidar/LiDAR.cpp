@@ -7,8 +7,10 @@ namespace LiDAR{
         PythonAPI::RunPyScript("setupEnvironment", "");
         PythonAPI::RunPyScript("place_cylinder_and_car",("D:" + SettingsFile::StringSetting("distanceToTestCylinder")));
     }
+
     void RunTest(){
         //init network
+        //--------------------------------------------------------------------------------------------------------------
         std::vector<int> settingTopology;
         std::string layer;
         std::stringstream networkShape = std::stringstream(SettingsFile::StringSetting("networkShape"));
@@ -19,6 +21,9 @@ namespace LiDAR{
         //make sure the final layer of the network has correct length
         settingTopology.push_back(std::stoi(SettingsFile::StringSetting("numberOfLiDAR"))*3);
         Perceptron *network = new Perceptron(settingTopology);
+        //--------------------------------------------------------------------------------------------------------------
+        //start the training loop
+        //--------------------------------------------------------------------------------------------------------------
         //fetch the input to the network (point cloud of vehicle)
         Eigen::RowVectorXf carMesh = CarlaToNetwork(
                                                     PythonAPI::RunPyScript("find_car_mesh", ""),
@@ -32,12 +37,18 @@ namespace LiDAR{
         PythonAPI::RunPyScript("place_sensors",carlaInput);
 
         //retrieve the point cloud collected from the sensor
-        PyObject* cylinderMesh = PythonAPI::RunPyScript("fetch_lidar_measurement","");
-        //calc objective value function (total lidar occupancy)
+        PyObject* lidarMeasurement = PythonAPI::RunPyScript("fetch_lidar_measurement","");
+        //and convert to cylindrical coordinates
+        Eigen::MatrixX3f cylinderMesh = CalculatePointsOnCylinder(lidarMeasurement);
+        //if (cylinderMesh.hasNaN())
+        //    return;
+        //calc total lidar occupancy
         //back-propogate
         //clean for next iteration
         //iterate
+        PythonAPI::RunPyScript("debugVisualizer","");
     }
+
     void CloseCARLA(){
         //PythonAPI::RunPyScript("debugVisualizer","");
         PythonAPI::RunPyScript("closeEnvironment","");
@@ -83,6 +94,7 @@ namespace LiDAR{
         }
         return output;
     }
+
     std::string NetworkToCarla(Perceptron * network){
         int numberOfLidar = std::stoi(SettingsFile::StringSetting("numberOfLiDAR"));
         if (network->topology.back() != numberOfLidar*3){
@@ -104,6 +116,37 @@ namespace LiDAR{
         }
         return output;
     }
+
+    Eigen::MatrixX3f CalculatePointsOnCylinder(PyObject * fromCarla, int randomSamplingSize){
+        //check the format of the input object
+        if(PythonAPI::GetPyObjectFormat(fromCarla) != "open3d.cpu.pybind.geometry.PointCloud") {
+            MyLogger::SaveToLog(("Unexpected return type from Carla:"
+                                 + PythonAPI::GetPyObjectFormat(fromCarla)).c_str(),MyLogger::FATAL);
+            return Eigen::RowVectorXf(0);
+        }
+        //extract the points from the point cloud object
+        PyObject * pointCollection = PyObject_GetAttrString(fromCarla,"points");
+        int numOfPoints = PySequence_Length(pointCollection);
+        //init the eigen vector to pass to the network
+        Eigen::MatrixX3f  cylindricalPoints = Eigen::MatrixX3f(PySequence_Length(pointCollection),3);
+        Eigen::RowVectorXf  cartesianPoints = Eigen::RowVectorXf(numOfPoints * 3);
+        PyObject * pointContainer;
+        //extract each point
+        for(int i = 0; i < numOfPoints; i ++){
+            pointContainer = PySequence_GetItem(pointCollection, i);
+            cartesianPoints.coeffRef(3 * i) = PyFloat_AsDouble(PySequence_GetItem(pointContainer, 0));
+            cartesianPoints.coeffRef(3 * i + 1) = PyFloat_AsDouble(PySequence_GetItem(pointContainer, 1));
+            cartesianPoints.coeffRef(3 * i + 2) = PyFloat_AsDouble(PySequence_GetItem(pointContainer, 2));
+            cylindricalPoints.coeffRef(i, 0) = sqrt(pow(cartesianPoints.coeffRef(3 * i), 2) + pow(cartesianPoints.coeffRef(3 * i + 1), 2));
+            cylindricalPoints.coeffRef(i, 1) = atan(cartesianPoints.coeffRef(3 * i + 1) / cartesianPoints.coeffRef(3 * i));
+            cylindricalPoints.coeffRef(i, 2) = cartesianPoints.coeffRef(3 * i + 2);
+        }
+        //discard any that aren't on the cylinder
+        //if needed, take a random sampling
+        //return as cylindrical coordinates
+        return cylindricalPoints;
+    }
+
     void ScalePointToVehicleBoundingBox(Perceptron * network, Eigen::RowVectorXf points){
         int numberOfLidar = std::stoi(SettingsFile::StringSetting("numberOfLiDAR"));
         float x, y, z;

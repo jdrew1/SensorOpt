@@ -15,6 +15,7 @@ global bp_lib
 global lidar_bp
 global car_lidar
 global lidar
+global lidar_measurement
 global vehicle
 global vehicle_points
 global args
@@ -75,15 +76,15 @@ def place_cylinder_and_car(inputstring = "D:10.0"):
     vehicle = world.try_spawn_actor(vehicle_bp, spawn_points[rand_spawn_point])
     # Spawn test cylinder
     box_bp = bp_lib.filter('box02*')[0]
-    for theta in range(0, 360, 2):
-        for height in range(0, 6):
+    for theta in range(0, 360, 3):
+        for height in range(0, 5):
             world.try_spawn_actor(box_bp,
                                   carla.Transform(
                                       spawn_points[rand_spawn_point].transform(
                                           carla.Location(
                                               x= distance * math.cos(theta*math.pi/180),
                                               y= distance * math.sin(theta*math.pi/180),
-                                              z= height*0.5-1)),
+                                              z= height*0.65-0.65)),
                                       carla.Rotation(yaw=theta))
                                   )
 
@@ -107,7 +108,7 @@ def find_car_mesh(inputstring = ""):
     single_detection = open3d.geometry.PointCloud()
 
     car_lidar.listen(lambda data: lidar_car_callback(data, single_detection, car_lidar.get_transform(), vehicle.semantic_tags[0]))
-    for theta in range(720):
+    for theta in range(0, 720, 5):
         car_lidar.set_transform(carla.Transform(spawn_points[rand_spawn_point].transform(carla.Location(
                                                     x= distance * math.cos(theta*math.pi/180),
                                                     y= distance * math.sin(theta*math.pi/180),
@@ -177,7 +178,7 @@ def place_sensors(inputstring = "0.0,0.0,0.0"):
         vehicle_points.estimate_normals()
         vehicle_points.orient_normals_to_align_with_direction(vehicle_points.points[closest_point_index])
         # spawn the sensor
-        lidar = world.try_spawn_actor(lidar_bp, carla.Transform(carla.Location(
+        lidar = world.spawn_actor(lidar_bp, carla.Transform(carla.Location(
                             x=vehicle_points.points[closest_point_index][0] + 0.1*vehicle_points.normals[closest_point_index][0] + spawn_points[rand_spawn_point].location.x,
                             y=vehicle_points.points[closest_point_index][1] + 0.1*vehicle_points.normals[closest_point_index][1] + spawn_points[rand_spawn_point].location.y,
                             z=vehicle_points.points[closest_point_index][2] + 0.1*vehicle_points.normals[closest_point_index][2] + spawn_points[rand_spawn_point].location.z))
@@ -190,13 +191,17 @@ def fetch_lidar_measurement(inputstring = ""):
     global spawn_points
     global rand_spawn_point
     global vehicle
+    global lidar
+    global lidar_measurement
     # start listening to the sensors
     total_points = open3d.geometry.PointCloud()
     single_detection = open3d.geometry.PointCloud()
     lidar.listen(lambda data: lidar_callback(data, single_detection))
     # if points were collected, add them to the output
-    while len(total_points.points) < 10000:
+    j = 0
+    while j < 10:
         if single_detection.has_points():
+            j = j + 1
             if open3d.geometry.PointCloud(total_points).is_empty():
                 total_points = single_detection
             else:
@@ -204,14 +209,10 @@ def fetch_lidar_measurement(inputstring = ""):
                 total_points = open3d.utility.Vector3dVector(temp_array)
             time.sleep(0.01)
     lidar.stop()
-    total_points.translate([0, 0, 0], False)
-    # filter for points on the cylinder
-    # convert points to cylindrical coordinates [r, theta, z]
-    temp_points = np.asarray(total_points.points)
 
-
-        # discard any points not at the correct distance
-    return  # list of points to calc objective function
+    # return the list of points to be converted to cylindrical coordinates and filtered
+    lidar_measurement = open3d.geometry.PointCloud(total_points)
+    return open3d.geometry.PointCloud(total_points)
 
 
 def clean_for_next_iteration():
@@ -232,6 +233,7 @@ def lidar_callback(point_cloud, point_list):
     points[:, :1] = -points[:, :1]
 
     point_list.points = open3d.utility.Vector3dVector(points)
+    point_list.paint_uniform_color([1.0, 1.0, 1.0])
 
 
 def fetch_vehicle_bounding_box(inputstring = ""):
@@ -250,15 +252,15 @@ def closeEnvironment(inputstring = ""):
 
 def debugVisualizer(inputstring = ""):
     time.sleep(1.0)
-
     global spawn_points
     global rand_spawn_point
     global vehicle_points
     point_list = open3d.geometry.PointCloud()
     global lidar
-    lidar.listen(lambda data: lidar_callback(data, point_list))
+    global lidar_measurement
+    # lidar.listen(lambda data: lidar_callback(data, point_list))
+    point_list = lidar_measurement
     vis = open3d.visualization.VisualizerWithKeyCallback()
-
     point_list.paint_uniform_color([0.0, 0.0, 0.0])
 
     windowOpen = True
@@ -343,6 +345,7 @@ if __name__ == '__main__':
     setupEnvironment("")
     place_cylinder_and_car()
     find_car_mesh()
-    place_sensors()
+    place_sensors("1.82,0.47,0.65")
+    fetch_lidar_measurement()
     debugVisualizer()
     # closeEnvironment()
