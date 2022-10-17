@@ -129,17 +129,16 @@ namespace LiDAR{
         int numOfPoints = PySequence_Length(pointCollection);
         //init the eigen vector to pass to the network
         Eigen::MatrixX3f  cylindricalPoints = Eigen::MatrixX3f(PySequence_Length(pointCollection),3);
-        Eigen::RowVectorXf  cartesianPoints = Eigen::RowVectorXf(numOfPoints * 3);
         PyObject * pointContainer;
         //extract each point
         for(int i = 0; i < numOfPoints; i ++){
             pointContainer = PySequence_GetItem(pointCollection, i);
-            cartesianPoints.coeffRef(3 * i) = PyFloat_AsDouble(PySequence_GetItem(pointContainer, 0));
-            cartesianPoints.coeffRef(3 * i + 1) = PyFloat_AsDouble(PySequence_GetItem(pointContainer, 1));
-            cartesianPoints.coeffRef(3 * i + 2) = PyFloat_AsDouble(PySequence_GetItem(pointContainer, 2));
-            cylindricalPoints.coeffRef(i, 0) = sqrt(pow(cartesianPoints.coeffRef(3 * i), 2) + pow(cartesianPoints.coeffRef(3 * i + 1), 2));
-            cylindricalPoints.coeffRef(i, 1) = atan(cartesianPoints.coeffRef(3 * i + 1) / cartesianPoints.coeffRef(3 * i));
-            cylindricalPoints.coeffRef(i, 2) = cartesianPoints.coeffRef(3 * i + 2);
+            cylindricalPoints.coeffRef(i, 0) = sqrt(pow(PyFloat_AsDouble(PySequence_GetItem(pointContainer, 0)), 2)
+                                                  + pow(PyFloat_AsDouble(PySequence_GetItem(pointContainer, 1)), 2));
+            cylindricalPoints.coeffRef(i, 1) = atan(PyFloat_AsDouble(PySequence_GetItem(pointContainer, 1))
+                                                    /
+                                                    PyFloat_AsDouble(PySequence_GetItem(pointContainer, 0)));
+            cylindricalPoints.coeffRef(i, 2) = PyFloat_AsDouble(PySequence_GetItem(pointContainer, 2));
         }
         //discard any that aren't on the cylinder
         //if needed, take a random sampling
