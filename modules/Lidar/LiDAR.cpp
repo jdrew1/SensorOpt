@@ -129,27 +129,23 @@ namespace LiDAR{
         Eigen::MatrixX3f  cylindricalPoints = Eigen::MatrixX3f(PySequence_Length(pointCollection),3);
         PyObject * pointContainer;
 
+        int cylIndex = 0;
         //extract each point
         for(int i = 0; i < numOfPoints; i ++){
             pointContainer = PySequence_GetItem(pointCollection, i);
-            cylindricalPoints.coeffRef(i, 0) = sqrt(pow(PyFloat_AsDouble(PySequence_GetItem(pointContainer, 0)), 2)
+            cylindricalPoints.coeffRef(cylIndex, 0) = sqrt(pow(PyFloat_AsDouble(PySequence_GetItem(pointContainer, 0)), 2)
                                                   + pow(PyFloat_AsDouble(PySequence_GetItem(pointContainer, 1)), 2));
-            cylindricalPoints.coeffRef(i, 1) = atan2(PyFloat_AsDouble(PySequence_GetItem(pointContainer, 1))
+            cylindricalPoints.coeffRef(cylIndex, 1) = atan2(PyFloat_AsDouble(PySequence_GetItem(pointContainer, 1))
                                                     ,
                                                     PyFloat_AsDouble(PySequence_GetItem(pointContainer, 0)))
                                                             +
                     (PyFloat_AsDouble(PySequence_GetItem(pointContainer, 1)) < 0 ? 2*M_PI : 0);
-            cylindricalPoints.coeffRef(i, 2) = PyFloat_AsDouble(PySequence_GetItem(pointContainer, 2));
+            cylindricalPoints.coeffRef(cylIndex, 2) = PyFloat_AsDouble(PySequence_GetItem(pointContainer, 2));
+            if (cylindricalPoints.coeffRef(cylIndex,0) > 9.0 && cylindricalPoints.coeffRef(cylIndex,0) < 11.0)
+                cylIndex++;
         }
         //discard any that aren't on the cylinder
-        int i = 0;
-        while (i < cylindricalPoints.rows()){
-            if (cylindricalPoints.coeffRef(i,0) < 9.0 || cylindricalPoints.coeffRef(i,0) > 11.0){
-                cylindricalPoints.block(i,0,cylindricalPoints.rows()-i-1,3)  = cylindricalPoints.block(i+1,0, cylindricalPoints.rows()-i-1,3);
-                cylindricalPoints.conservativeResize(cylindricalPoints.rows()-1,3);
-            }
-            else i++;
-        }
+        cylindricalPoints.conservativeResize(cylIndex+1,3);
         return cylindricalPoints;
     }
 

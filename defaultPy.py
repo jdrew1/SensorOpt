@@ -108,7 +108,7 @@ def find_car_mesh(inputstring = ""):
     single_detection = open3d.geometry.PointCloud()
 
     car_lidar.listen(lambda data: lidar_car_callback(data, single_detection, car_lidar.get_transform(), vehicle.semantic_tags[0]))
-    for theta in range(0, 720, 5):
+    for theta in range(0, 720, 2):
         car_lidar.set_transform(carla.Transform(spawn_points[rand_spawn_point].transform(carla.Location(
                                                     x= distance * math.cos(theta*math.pi/180),
                                                     y= distance * math.sin(theta*math.pi/180),
