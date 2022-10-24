@@ -251,6 +251,10 @@ def closeEnvironment(inputstring = ""):
 
 
 def debugVisualizer(inputstring = ""):
+    inputPoints = False
+    if inputstring != "":
+        inputPoints = True
+        inputstring = inputstring[1:]
     time.sleep(1.0)
     global spawn_points
     global rand_spawn_point
@@ -259,7 +263,13 @@ def debugVisualizer(inputstring = ""):
     global lidar
     global lidar_measurement
     # lidar.listen(lambda data: lidar_callback(data, point_list))
-    point_list = lidar_measurement
+    points_to_convert = open3d.utility.Vector3dVector()
+    if inputPoints:
+        for point in inputstring.split('|'):
+            points_to_convert.append([point.split(',')[0], point.split(',')[1], point.split(',')[2]])
+        point_list = open3d.geometry.PointCloud(points_to_convert)
+    else:
+        point_list = lidar_measurement
     vis = open3d.visualization.VisualizerWithKeyCallback()
     point_list.paint_uniform_color([0.0, 0.0, 0.0])
 
@@ -281,7 +291,6 @@ def debugVisualizer(inputstring = ""):
     vis.get_render_option().background_color = [1.0, 1.0, 1.0]
     vis.get_render_option().point_size = 1
     vis.get_render_option().show_coordinate_frame = True
-
     """Add a small 3D axis on Open3D Visualizer"""
     axis = open3d.geometry.LineSet()
     axis.points = open3d.utility.Vector3dVector(np.array([

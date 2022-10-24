@@ -28,6 +28,7 @@ namespace LiDAR{
         Eigen::RowVectorXf carMesh = CarlaToNetwork(
                                                     PythonAPI::RunPyScript("find_car_mesh", ""),
                                                     network->topology.front());
+        CheckPointsWithDebugVisualizer(carMesh);
         //use the network to determine the output
         network->ForwardProp(carMesh);
         //network only returns [-1,1] so scale the points according to the bounding box of the car
@@ -40,6 +41,7 @@ namespace LiDAR{
         PyObject* lidarMeasurement = PythonAPI::RunPyScript("fetch_lidar_measurement","");
         //and convert to cylindrical coordinates
         Eigen::MatrixX3f cylinderMesh = CalculatePointsOnCylinder(lidarMeasurement);
+        CheckPointsWithDebugVisualizer(cylinderMesh);
         //calc total lidar occupancy
         //back-propogate
         //clean for next iteration
@@ -67,9 +69,9 @@ namespace LiDAR{
         //extract each point
         for(int i = 0; i < PySequence_Length(pointCollection); i ++){
             pointContainer = PySequence_GetItem(pointCollection, i);
-            output.coeffRef(3*i) = PyFloat_AsDouble(PyObject_GetAttrString(pointContainer, "X"));
-            output.coeffRef(3*i+1) = PyFloat_AsDouble(PyObject_GetAttrString(pointContainer, "Y"));
-            output.coeffRef(3*i+2) = PyFloat_AsDouble(PyObject_GetAttrString(pointContainer, "Z"));
+            output.coeffRef(3*i) = PyFloat_AsDouble(PySequence_GetItem(pointContainer,0));
+            output.coeffRef(3*i+1) = PyFloat_AsDouble(PySequence_GetItem(pointContainer,1));
+            output.coeffRef(3*i+2) = PyFloat_AsDouble(PySequence_GetItem(pointContainer,2));
         }
         std::srand(std::time(0));
         //trim the eigen vector to have the same size as the network
@@ -141,7 +143,7 @@ namespace LiDAR{
                                                             +
                     (PyFloat_AsDouble(PySequence_GetItem(pointContainer, 1)) < 0 ? 2*M_PI : 0);
             cylindricalPoints.coeffRef(cylIndex, 2) = PyFloat_AsDouble(PySequence_GetItem(pointContainer, 2));
-            if (cylindricalPoints.coeffRef(cylIndex,0) > 9.0 && cylindricalPoints.coeffRef(cylIndex,0) < 11.0)
+            if (cylindricalPoints.coeffRef(cylIndex,0) > 9.0 && cylindricalPoints.coeffRef(cylIndex,0) < 12.0)
                 cylIndex++;
         }
         //discard any that aren't on the cylinder
@@ -162,5 +164,31 @@ namespace LiDAR{
             network->neurons.back()->coeffRef(3*i+1) = network->neurons.back()->coeffRef(3*i+1) * y*2;
             network->neurons.back()->coeffRef(3*i+2) = network->neurons.back()->coeffRef(3*i+2) * z*2;
         }
+    }
+    void CheckPointsWithDebugVisualizer(Eigen::MatrixXf pointsToCheck){
+        std::string toCarla = "";
+        switch(pointsToCheck.cols()){
+            case 3:
+                for(auto Point: pointsToCheck.rowwise()){
+                    toCarla += "|";
+                    toCarla += std::to_string(Point.coeffRef(0)* cos(Point.coeffRef(1)));
+                    toCarla += ",";
+                    toCarla += std::to_string(Point.coeffRef(0)* sin(Point.coeffRef(1)));
+                    toCarla += ",";
+                    toCarla += std::to_string(Point.coeffRef(2));
+                }
+                break;
+            default:
+                for(int i = 0; i < pointsToCheck.cols(); i+=3){
+                    toCarla += "|";
+                    toCarla += std::to_string(pointsToCheck.coeffRef(0,i));
+                    toCarla += ",";
+                    toCarla += std::to_string(pointsToCheck.coeffRef(0,i+1));
+                    toCarla += ",";
+                    toCarla += std::to_string(pointsToCheck.coeffRef(0,i+2));
+                }
+                break;
+        }
+        PythonAPI::RunPyScript("debugVisualizer", toCarla);
     }
 }
