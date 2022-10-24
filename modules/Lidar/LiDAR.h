@@ -18,5 +18,6 @@ namespace LiDAR{
     void ScalePointToVehicleBoundingBox(Perceptron * network, Eigen::RowVectorXf points);
     Eigen::MatrixX3f CalculatePointsOnCylinder(PyObject * fromCarla, int randomSamplingSize = 10000);
     void CheckPointsWithDebugVisualizer(Eigen::MatrixXf pointsToCheck);
+    int CalculateTotalLidarOccupancy(Eigen::MatrixXf cylinderPoints);
 }
 #endif

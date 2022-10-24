@@ -28,7 +28,6 @@ namespace LiDAR{
         Eigen::RowVectorXf carMesh = CarlaToNetwork(
                                                     PythonAPI::RunPyScript("find_car_mesh", ""),
                                                     network->topology.front());
-        CheckPointsWithDebugVisualizer(carMesh);
         //use the network to determine the output
         network->ForwardProp(carMesh);
         //network only returns [-1,1] so scale the points according to the bounding box of the car
@@ -41,8 +40,8 @@ namespace LiDAR{
         PyObject* lidarMeasurement = PythonAPI::RunPyScript("fetch_lidar_measurement","");
         //and convert to cylindrical coordinates
         Eigen::MatrixX3f cylinderMesh = CalculatePointsOnCylinder(lidarMeasurement);
-        CheckPointsWithDebugVisualizer(cylinderMesh);
         //calc total lidar occupancy
+        CalculateTotalLidarOccupancy(cylinderMesh);
         //back-propogate
         //clean for next iteration
         //iterate
@@ -190,5 +189,19 @@ namespace LiDAR{
                 break;
         }
         PythonAPI::RunPyScript("debugVisualizer", toCarla);
+    }
+
+    int CalculateTotalLidarOccupancy(Eigen::MatrixXf cylinderPoints){
+        float divisionsPerUnit = 10.0, height = 7.0, distanceToCylinder = std::stof(SettingsFile::StringSetting("distanceToTestCylinder"));
+        Eigen::MatrixXi cylinderDivisions = Eigen::MatrixXi((int)(height * divisionsPerUnit), (int)((M_PI * 2 * distanceToCylinder) * divisionsPerUnit));
+        cylinderDivisions.setZero();
+
+        for (auto point : cylinderPoints.rowwise()){
+            //place a '1' in each element of the matrix corresponding to a point found via Lidar
+            cylinderDivisions.coeffRef(round(point.coeffRef(2) * divisionsPerUnit),
+                                       round(point.coeffRef(1) * distanceToCylinder * divisionsPerUnit)) = 1;
+        }
+        std::cout << "points on cylinder: " << cylinderDivisions.sum();
+        return cylinderDivisions.sum();
     }
 }
