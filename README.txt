@@ -55,6 +55,7 @@ Finally, build
 ====================================================
 -Eigen3
 -Python3.8 (recommended through conda)
+-Tensorflow(recommended through homebrew)
 -RapidJSON
 
 --End of Readme.txt

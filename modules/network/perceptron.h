@@ -5,6 +5,7 @@
 #include <math.h>
 #include <fstream>
 #include <string>
+#include <tensorflow/c/c_api.h>
 
 
 class Perceptron{

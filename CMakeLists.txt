@@ -15,10 +15,17 @@ set(Python3_FIND_VIRTUALENV ONLY)
 set(Python3_ROOT_DIR "/Users/jordan/opt/anaconda3/envs/carla/")
 find_package(Python3 COMPONENTS Interpreter Development 3.8)
 
+#include tensorflow
+find_package(PkgConfig)
+pkg_check_modules(TensorFlow REQUIRED tensorflow)
+link_directories(${TensorFlow_LIBRARY_DIRS})
+
 #include the dependencies in the build
 include_directories(${PROJECT_SOURCE_DIR}/lib/Eigen
         ${PROJECT_SOURCE_DIR}/lib/rapidJSON/include
-        ${PROJECT_SOURCE_DIR}/modules)
+        ${PROJECT_SOURCE_DIR}/modules
+        ${TensorFlow_INCLUDE_DIRS})
+add_compile_definitions(${TensorFlow_CFLAGS_OTHER})
 
 add_executable(DeepLProject
         main.cpp
@@ -29,4 +36,4 @@ add_executable(DeepLProject
         modules/MNist/MNist.cpp
         modules/LiDAR/LiDAR.cpp)
 
-target_link_libraries(DeepLProject PUBLIC Python3::Python)
+target_link_libraries(DeepLProject PUBLIC Python3::Python ${TensorFlow_LIBRARIES})
