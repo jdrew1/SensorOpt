@@ -18,16 +18,6 @@ namespace LiDAR{
         return CalculatePointsOnCylinder(lidarMeasurement);
     }
 
-    void RunTest(){
-
-        //calc total lidar occupancy
-        //CalculateTotalLidarOccupancy(cylinderMesh);
-        //back-propogate
-        //clean for next iteration
-        //iterate
-        PythonAPI::RunPyScript("debugVisualizer","");
-    }
-
     Eigen::MatrixX3f CarlaToNetwork(PyObject * fromCarla, int networkInputSize){
         //check the format of the input object
         if(PythonAPI::GetPyObjectFormat(fromCarla) != "open3d.cpu.pybind.geometry.PointCloud") {
@@ -151,15 +141,27 @@ namespace LiDAR{
         }
     }
 
-    void CheckPointsWithDebugVisualizer(Eigen::MatrixX3f pointsToCheck){
+    void CheckPointsWithDebugVisualizer(Eigen::MatrixX3f pointsToCheck, bool cartesian){
         std::string toCarla = "";
-        for(auto Point: pointsToCheck.rowwise()){
-            toCarla += "|";
-            toCarla += std::to_string(Point.coeffRef(0)* cos(Point.coeffRef(1)));
-            toCarla += ",";
-            toCarla += std::to_string(Point.coeffRef(0)* sin(Point.coeffRef(1)));
-            toCarla += ",";
-            toCarla += std::to_string(Point.coeffRef(2));
+        if (cartesian){
+            for(auto Point: pointsToCheck.rowwise()){
+                toCarla += "|";
+                toCarla += std::to_string(Point.coeffRef(0));
+                toCarla += ",";
+                toCarla += std::to_string(Point.coeffRef(1));
+                toCarla += ",";
+                toCarla += std::to_string(Point.coeffRef(2));
+            }
+        }
+        else{
+            for(auto Point: pointsToCheck.rowwise()){
+                toCarla += "|";
+                toCarla += std::to_string(Point.coeffRef(0)* cos(Point.coeffRef(1)));
+                toCarla += ",";
+                toCarla += std::to_string(Point.coeffRef(0)* sin(Point.coeffRef(1)));
+                toCarla += ",";
+                toCarla += std::to_string(Point.coeffRef(2));
+            }
         }
         PythonAPI::RunPyScript("debugVisualizer", toCarla);
     }

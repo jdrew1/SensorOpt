@@ -11,8 +11,8 @@ int main(int argc, char **argv) {
     //std::vector<int> TLOPerPoint;
     //TLOPerPoint.push_back(LiDAR::CalculateTotalLidarOccupancy(cylinderPoints));
 
-    LiDAR::CheckPointsWithDebugVisualizer(vehiclePoints);
-    LiDAR::CheckPointsWithDebugVisualizer(cylinderPoints);
+    LiDAR::CheckPointsWithDebugVisualizer(vehiclePoints, true);
+    LiDAR::CheckPointsWithDebugVisualizer(cylinderPoints, false);
 
 
 
