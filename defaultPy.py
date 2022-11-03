@@ -101,6 +101,7 @@ def find_car_mesh(inputstring = ""):
     global vehicle_points
     # place semantic sensor
     car_lidar_bp = bp_lib.find('sensor.lidar.ray_cast_semantic')
+    car_lidar_bp.set_attribute('noise_stddev', '0.0')
     global car_lidar
     car_lidar = world.spawn_actor(car_lidar_bp, carla.Transform(spawn_points[rand_spawn_point].transform(carla.Location(x=distance, z=4))))
     # measure while rotating around car
@@ -209,6 +210,7 @@ def fetch_lidar_measurement(inputstring = ""):
                 total_points = open3d.utility.Vector3dVector(temp_array)
             time.sleep(0.01)
     lidar.stop()
+    lidar.destroy()
 
     # return the list of points to be converted to cylindrical coordinates and filtered
     lidar_measurement = open3d.geometry.PointCloud(total_points)
@@ -251,6 +253,7 @@ def closeEnvironment(inputstring = ""):
 
 
 def debugVisualizer(inputstring = ""):
+    print("started python debugger")
     inputPoints = False
     if inputstring != "":
         inputPoints = True
@@ -272,7 +275,6 @@ def debugVisualizer(inputstring = ""):
         point_list = lidar_measurement
     vis = open3d.visualization.VisualizerWithKeyCallback()
     point_list.paint_uniform_color([0.0, 0.0, 0.0])
-
     windowOpen = True
 
     def keyCallback(vis, action, mods):
@@ -280,7 +282,6 @@ def debugVisualizer(inputstring = ""):
         windowOpen = False
         vis.close()
         return True
-
     vis.register_key_action_callback(32, keyCallback)
     vis.create_window(
         window_name='Carla Lidar',
@@ -292,7 +293,7 @@ def debugVisualizer(inputstring = ""):
     vis.get_render_option().point_size = 1
     vis.get_render_option().show_coordinate_frame = True
     """Add a small 3D axis on Open3D Visualizer"""
-    axis = open3d.geometry.LineSet()
+    """axis = open3d.geometry.LineSet()
     axis.points = open3d.utility.Vector3dVector(np.array([
         [0.0 + lidar.get_transform().location.x - spawn_points[rand_spawn_point].location.x, 0.0 + lidar.get_transform().location.y - spawn_points[rand_spawn_point].location.y, 0.0 + lidar.get_transform().location.z - spawn_points[rand_spawn_point].location.z],
         [1.0 + lidar.get_transform().location.x - spawn_points[rand_spawn_point].location.x, 0.0 + lidar.get_transform().location.y - spawn_points[rand_spawn_point].location.y, 0.0 + lidar.get_transform().location.z - spawn_points[rand_spawn_point].location.z],
@@ -306,8 +307,7 @@ def debugVisualizer(inputstring = ""):
         [1.0, 0.0, 0.0],
         [0.0, 1.0, 0.0],
         [0.0, 0.0, 1.0]]))
-    vis.add_geometry(axis)
-
+    vis.add_geometry(axis)"""
     frame = 0
     while windowOpen:
         if frame == 2:

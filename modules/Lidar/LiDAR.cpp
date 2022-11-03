@@ -2,58 +2,33 @@
 
 namespace LiDAR{
 
-    void SetupCARLA(){
-        PythonAPI::RunPyScript("parseArguments", "");
-        PythonAPI::RunPyScript("setupEnvironment", "");
-        PythonAPI::RunPyScript("place_cylinder_and_car",("D:" + SettingsFile::StringSetting("distanceToTestCylinder")));
+    Eigen::MatrixX3f FetchVehiclePoints(int numberOfPoints){
+        return CarlaToNetwork(PythonAPI::RunPyScript("find_car_mesh", ""),
+                              numberOfPoints);
     }
 
-    void RunTest(){
-        //init network
-        //--------------------------------------------------------------------------------------------------------------
-        std::vector<int> settingTopology;
-        std::string layer;
-        std::stringstream networkShape = std::stringstream(SettingsFile::StringSetting("networkShape"));
-        while(getline(networkShape, layer, ':'))
-            settingTopology.push_back(std::stoi(layer));
-        //multiply the first layer by three to separate the x,y,z coordinates
-        settingTopology.front() = settingTopology.front()*3;
-        //make sure the final layer of the network has correct length
-        settingTopology.push_back(std::stoi(SettingsFile::StringSetting("numberOfLiDAR"))*3);
-        Perceptron *network = new Perceptron(settingTopology);
-        //--------------------------------------------------------------------------------------------------------------
-        //start the training loop
-        //--------------------------------------------------------------------------------------------------------------
-        //fetch the input to the network (point cloud of vehicle)
-        Eigen::RowVectorXf carMesh = CarlaToNetwork(
-                                                    PythonAPI::RunPyScript("find_car_mesh", ""),
-                                                    network->topology.front());
-        //use the network to determine the output
-        network->ForwardProp(carMesh);
-        //network only returns [-1,1] so scale the points according to the bounding box of the car
-        ScalePointToVehicleBoundingBox(network, carMesh);
 
-        std::string carlaInput = NetworkToCarla(network);
+    Eigen::MatrixX3f FetchCylinderPoints(float x, float y, float z){
+        std::string carlaInput = NetworkToCarla(x,y,z);
         PythonAPI::RunPyScript("place_sensors",carlaInput);
 
         //retrieve the point cloud collected from the sensor
         PyObject* lidarMeasurement = PythonAPI::RunPyScript("fetch_lidar_measurement","");
         //and convert to cylindrical coordinates
-        Eigen::MatrixX3f cylinderMesh = CalculatePointsOnCylinder(lidarMeasurement);
+        return CalculatePointsOnCylinder(lidarMeasurement);
+    }
+
+    void RunTest(){
+
         //calc total lidar occupancy
-        CalculateTotalLidarOccupancy(cylinderMesh);
+        //CalculateTotalLidarOccupancy(cylinderMesh);
         //back-propogate
         //clean for next iteration
         //iterate
         PythonAPI::RunPyScript("debugVisualizer","");
     }
 
-    void CloseCARLA(){
-        //PythonAPI::RunPyScript("debugVisualizer","");
-        PythonAPI::RunPyScript("closeEnvironment","");
-    }
-
-    Eigen::RowVectorXf CarlaToNetwork(PyObject * fromCarla, int networkInputSize){
+    Eigen::MatrixX3f CarlaToNetwork(PyObject * fromCarla, int networkInputSize){
         //check the format of the input object
         if(PythonAPI::GetPyObjectFormat(fromCarla) != "open3d.cpu.pybind.geometry.PointCloud") {
             MyLogger::SaveToLog(("Unexpected return type from Carla:"
@@ -63,33 +38,36 @@ namespace LiDAR{
         //extract the points from the point cloud object
         PyObject * pointCollection = PyObject_GetAttrString(fromCarla,"points");
         //init the eigen vector to pass to the network
-        Eigen::RowVectorXf  output = Eigen::RowVectorXf(PySequence_Length(pointCollection)*3);
+        Eigen::MatrixX3f output = Eigen::MatrixX3f(PySequence_Length(pointCollection),3);
         PyObject * pointContainer;
         //extract each point
         for(int i = 0; i < PySequence_Length(pointCollection); i ++){
             pointContainer = PySequence_GetItem(pointCollection, i);
-            output.coeffRef(3*i) = PyFloat_AsDouble(PySequence_GetItem(pointContainer,0));
-            output.coeffRef(3*i+1) = PyFloat_AsDouble(PySequence_GetItem(pointContainer,1));
-            output.coeffRef(3*i+2) = PyFloat_AsDouble(PySequence_GetItem(pointContainer,2));
+            output.coeffRef(i,0) = PyFloat_AsDouble(PySequence_GetItem(pointContainer,0));
+            output.coeffRef(i,1) = PyFloat_AsDouble(PySequence_GetItem(pointContainer,1));
+            output.coeffRef(i,2) = PyFloat_AsDouble(PySequence_GetItem(pointContainer,2));
         }
-        std::srand(std::time(0));
-        //trim the eigen vector to have the same size as the network
-        while (output.size() > networkInputSize){
-            //pick a random point to avoid biasing the front of the array
-            int randIndex = std::rand() % ((networkInputSize/3)-1);
-            Eigen::RowVectorXf tempA = output.block(0,0,output.rows(),randIndex*3);
-            Eigen::RowVectorXf tempB = output.block(0,randIndex*3+3,output.rows(),output.cols()-(randIndex*3+3));
-            output = Eigen::RowVectorXf(tempA.cols() + tempB.cols());
-            output << tempA, tempB;
-        }
-        //otherwise pad the vector with zeroes
-        while (output.size() < networkInputSize){
-            //pick a random point to avoid biasing the front of the array
-            int randIndex = std::rand() % ((output.size()/3)-1);
-            Eigen::RowVectorXf tempA = output.block(0,0,output.rows(),randIndex*3);
-            Eigen::RowVectorXf tempB = output.block(0,randIndex*3,output.rows(),output.cols()-(randIndex*3));
-            output = Eigen::RowVectorXf(tempA.cols() + tempB.cols() + 3);
-            output << tempA, Eigen::RowVectorXf::Zero(3), tempB;
+        // if there is a defined amount of points, make sure the correct number is returned
+        if (networkInputSize != 0){
+            std::srand(std::time(0));
+            //trim the eigen vector to have the same size as the network
+            while (output.rows() > networkInputSize){
+                //pick a random point to avoid biasing the front of the array
+                int randIndex = std::rand() % networkInputSize;
+                Eigen::MatrixX3f tempA = output.block(0,0,randIndex,3);
+                Eigen::MatrixX3f tempB = output.block(randIndex+1,0,output.rows()-randIndex-1,output.cols());
+                output = Eigen::MatrixX3f(tempA.rows() + tempB.rows(),3);
+                output << tempA, tempB;
+            }
+            //otherwise pad the vector with zeroes
+            while (output.rows() < networkInputSize){
+                //pick a random point to avoid biasing the front of the array
+                int randIndex = std::rand() % output.rows();
+                Eigen::MatrixX3f tempA = output.block(0,0,randIndex,3);
+                Eigen::MatrixX3f tempB = output.block(randIndex,0,output.rows()-randIndex,output.cols());
+                output = Eigen::MatrixX3f(tempA.rows() + tempB.rows() + 1,3);
+                output << tempA, Eigen::RowVectorXf::Zero(3), tempB;
+            }
         }
         return output;
     }
@@ -116,7 +94,15 @@ namespace LiDAR{
         return output;
     }
 
-    Eigen::MatrixX3f CalculatePointsOnCylinder(PyObject * fromCarla, int randomSamplingSize){
+    std::string NetworkToCarla(float x, float y, float z){
+        std::string output;
+        output += std::to_string(x);
+        output += "," + std::to_string(y);
+        output += "," + std::to_string(z);
+        return output;
+    }
+
+    Eigen::MatrixX3f CalculatePointsOnCylinder(PyObject * fromCarla){
         //check the format of the input object
         if(PythonAPI::GetPyObjectFormat(fromCarla) != "open3d.cpu.pybind.geometry.PointCloud") {
             MyLogger::SaveToLog(("Unexpected return type from Carla:"
@@ -164,34 +150,21 @@ namespace LiDAR{
             network->neurons.back()->coeffRef(3*i+2) = network->neurons.back()->coeffRef(3*i+2) * z*2;
         }
     }
-    void CheckPointsWithDebugVisualizer(Eigen::MatrixXf pointsToCheck){
+
+    void CheckPointsWithDebugVisualizer(Eigen::MatrixX3f pointsToCheck){
         std::string toCarla = "";
-        switch(pointsToCheck.cols()){
-            case 3:
-                for(auto Point: pointsToCheck.rowwise()){
-                    toCarla += "|";
-                    toCarla += std::to_string(Point.coeffRef(0)* cos(Point.coeffRef(1)));
-                    toCarla += ",";
-                    toCarla += std::to_string(Point.coeffRef(0)* sin(Point.coeffRef(1)));
-                    toCarla += ",";
-                    toCarla += std::to_string(Point.coeffRef(2));
-                }
-                break;
-            default:
-                for(int i = 0; i < pointsToCheck.cols(); i+=3){
-                    toCarla += "|";
-                    toCarla += std::to_string(pointsToCheck.coeffRef(0,i));
-                    toCarla += ",";
-                    toCarla += std::to_string(pointsToCheck.coeffRef(0,i+1));
-                    toCarla += ",";
-                    toCarla += std::to_string(pointsToCheck.coeffRef(0,i+2));
-                }
-                break;
+        for(auto Point: pointsToCheck.rowwise()){
+            toCarla += "|";
+            toCarla += std::to_string(Point.coeffRef(0)* cos(Point.coeffRef(1)));
+            toCarla += ",";
+            toCarla += std::to_string(Point.coeffRef(0)* sin(Point.coeffRef(1)));
+            toCarla += ",";
+            toCarla += std::to_string(Point.coeffRef(2));
         }
         PythonAPI::RunPyScript("debugVisualizer", toCarla);
     }
 
-    int CalculateTotalLidarOccupancy(Eigen::MatrixXf cylinderPoints){
+    int CalculateTotalLidarOccupancy(Eigen::MatrixX3f cylinderPoints){
         float divisionsPerUnit = 10.0, height = 7.0, distanceToCylinder = std::stof(SettingsFile::StringSetting("distanceToTestCylinder"));
         Eigen::MatrixXi cylinderDivisions = Eigen::MatrixXi((int)(height * divisionsPerUnit), (int)((M_PI * 2 * distanceToCylinder) * divisionsPerUnit));
         cylinderDivisions.setZero();
@@ -201,7 +174,6 @@ namespace LiDAR{
             cylinderDivisions.coeffRef(round(point.coeffRef(2) * divisionsPerUnit),
                                        round(point.coeffRef(1) * distanceToCylinder * divisionsPerUnit)) = 1;
         }
-        std::cout << "points on cylinder: " << cylinderDivisions.sum();
         return cylinderDivisions.sum();
     }
 }

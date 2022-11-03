@@ -15,7 +15,7 @@ namespace PythonAPI{
     PyObject* RunPyScript(std::string pyFunctName, std::string pythonArgs, std::string pyScriptLoc){
 
         MyLogger::SaveToLog(("RunPyScript: Running Python Script: " +
-                             pyFunctName + "(" + pythonArgs + ")").c_str(), MyLogger::Message);
+                             pyFunctName + "(" + ")").c_str(), MyLogger::Message);
         PyObject* pName = PyUnicode_FromString(pyScriptLoc.c_str());
         PyObject* pModule = PyImport_Import(pName);
 
@@ -35,7 +35,7 @@ namespace PythonAPI{
     }
 
     std::string GetPyObjectFormat(PyObject* toParse, std::string buildup){
-        MyLogger::SaveToLog("ParsePyObject: Interpreting Python Object", MyLogger::Message);
+        //MyLogger::SaveToLog("ParsePyObject: Interpreting Python Object", MyLogger::Message);
         if (toParse == nullptr) {
             MyLogger::SaveToLog("ParsePyObject: Python object is null", MyLogger::Error);
             return "";
@@ -43,7 +43,7 @@ namespace PythonAPI{
         if (buildup != "")
             buildup.append(":");
         buildup.append(toParse->ob_type->tp_name);
-        MyLogger::SaveToLog(("Python Object Interpreted: " + buildup).c_str(), MyLogger::Message);
+        //MyLogger::SaveToLog(("Python Object Interpreted: " + buildup).c_str(), MyLogger::Message);
         return buildup;
     }
 

@@ -5,12 +5,6 @@
     #include <iostream>
     #include <vector>
     #include <stdio.h>
-    #ifdef __APPLE__
-        #ifdef TARGET_OS_MAC
-        //#include <>
-        #endif
-    #elif _WIN32
-    #endif
     //dependencies
     //--------------------------------------------------
     #include "lib/Eigen/Eigen/Eigen"
@@ -34,8 +28,20 @@
         SettingsFile::InitSettings();
         MyLogger::InitLogging();
 		PythonAPI::SetupPython(arguments);
+        // open the carla simulator
         //FILE * carla = popen(SettingsFile::StringSetting("pathToCarla").c_str(),"r");
 
+    }
+
+    void SetupCARLA(){
+        PythonAPI::RunPyScript("parseArguments", "");
+        PythonAPI::RunPyScript("setupEnvironment", "");
+        PythonAPI::RunPyScript("place_cylinder_and_car",("D:" + SettingsFile::StringSetting("distanceToTestCylinder")));
+    }
+
+    void CloseCARLA(){
+        //PythonAPI::RunPyScript("debugVisualizer","");
+        PythonAPI::RunPyScript("closeEnvironment","");
     }
 
     void CleanProgram() {
