@@ -101,7 +101,6 @@ def find_car_mesh(inputstring = ""):
     global vehicle_points
     # place semantic sensor
     car_lidar_bp = bp_lib.find('sensor.lidar.ray_cast_semantic')
-    car_lidar_bp.set_attribute('noise_stddev', '0.0')
     global car_lidar
     car_lidar = world.spawn_actor(car_lidar_bp, carla.Transform(spawn_points[rand_spawn_point].transform(carla.Location(x=distance, z=4))))
     # measure while rotating around car
