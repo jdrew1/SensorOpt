@@ -7,7 +7,7 @@
 #include <fstream>
 #include <ctime>
 #include "Eigen/Eigen"
-#include "settingsfile.h"
+#include "settingsFile/settingsfile.h"
 
 namespace SavePoints{
     int SavePointsToDisc(Eigen::MatrixX3f pointsToSave,

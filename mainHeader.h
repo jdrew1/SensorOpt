@@ -12,13 +12,11 @@
     //basic files
     //--------------------------------------------------
     #include "network/perceptron.h"
-    #include "settingsfile.h"
-    #include "logger.h"
-    #include "PythonAPI.h"
+    #include "settingsFile/settingsfile.h"
+    #include "logger/logger.h"
+    #include "pythonAPI/PythonAPI.h"
     //application specific
     //--------------------------------------------------
-    #include "modules/MNist/MNist.h"
-    #include "modules/MNist/DataHandling.h"
     #include "Lidar/LiDAR.h"
 
 
@@ -34,9 +32,11 @@
     }
 
     void SetupCARLA(){
-        PythonAPI::RunPyScript("parseArguments", "");
-        PythonAPI::RunPyScript("setupEnvironment", "");
-        PythonAPI::RunPyScript("place_cylinder_and_car",("D:" + SettingsFile::StringSetting("distanceToTestCylinder")));
+        PythonAPI::RunPyScript("parseArguments", "", SettingsFile::StringSetting("carlaPyScriptLoc"));
+        PythonAPI::RunPyScript("setupEnvironment", "", SettingsFile::StringSetting("carlaPyScriptLoc"));
+        PythonAPI::RunPyScript("place_cylinder_and_car",
+                               ("D:" + SettingsFile::StringSetting("distanceToTestCylinder")),
+                               SettingsFile::StringSetting("carlaPyScriptLoc"));
     }
 
     void CloseCARLA(){

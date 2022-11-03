@@ -4,7 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <ctime>
-#include "settingsfile.h"
+#include "settingsFile/settingsfile.h"
 
 
 namespace MyLogger{

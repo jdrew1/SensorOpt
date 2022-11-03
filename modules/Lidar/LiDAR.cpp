@@ -3,20 +3,21 @@
 namespace LiDAR{
 
     Eigen::MatrixX3f FetchVehiclePoints(int numberOfPoints){
-        return CarlaToNetwork(PythonAPI::RunPyScript("find_car_mesh", ""),
+        return CarlaToNetwork(PythonAPI::RunPyScript("find_car_mesh", "", SettingsFile::StringSetting("carlaPyScriptLoc")),
                               numberOfPoints);
     }
 
-
     Eigen::MatrixX3f FetchCylinderPoints(float x, float y, float z){
         std::string carlaInput = NetworkToCarla(x,y,z);
-        PythonAPI::RunPyScript("place_sensors",carlaInput);
+        PythonAPI::RunPyScript("place_sensors",carlaInput, SettingsFile::StringSetting("carlaPyScriptLoc"));
 
         //retrieve the point cloud collected from the sensor
-        PyObject* lidarMeasurement = PythonAPI::RunPyScript("fetch_lidar_measurement","");
+        PyObject* lidarMeasurement = PythonAPI::RunPyScript("fetch_lidar_measurement","", SettingsFile::StringSetting("carlaPyScriptLoc"));
         //and convert to cylindrical coordinates
         return CalculatePointsOnCylinder(lidarMeasurement);
     }
+
+
 
     Eigen::MatrixX3f CarlaToNetwork(PyObject * fromCarla, int networkInputSize){
         //check the format of the input object
@@ -58,28 +59,6 @@ namespace LiDAR{
                 output = Eigen::MatrixX3f(tempA.rows() + tempB.rows() + 1,3);
                 output << tempA, Eigen::RowVectorXf::Zero(3), tempB;
             }
-        }
-        return output;
-    }
-
-    std::string NetworkToCarla(Perceptron * network){
-        int numberOfLidar = std::stoi(SettingsFile::StringSetting("numberOfLiDAR"));
-        if (network->topology.back() != numberOfLidar*3){
-            MyLogger::SaveToLog(("NetworkToCarla: Network output wrong dimension{"
-                                + std::to_string(numberOfLidar*3)
-                                + "}: "
-                                + std::to_string(network->topology.back())).c_str(),MyLogger::FATAL);
-            return "";
-        }
-        std::string output;
-        output += std::to_string(network->neurons.back()->coeffRef(0));
-        output += "," + std::to_string(network->neurons.back()->coeffRef(1));
-        output += "," + std::to_string(network->neurons.back()->coeffRef(2));
-        for (int i = 1; i < numberOfLidar; i++){
-            output += "|";
-            output += "" + std::to_string(network->neurons.back()->coeffRef(i*3+0));
-            output += "," + std::to_string(network->neurons.back()->coeffRef(i*3+1));
-            output += "," + std::to_string(network->neurons.back()->coeffRef(i*3+2));
         }
         return output;
     }
@@ -126,6 +105,19 @@ namespace LiDAR{
         return cylindricalPoints;
     }
 
+    int CalculateTotalLidarOccupancy(Eigen::MatrixX3f cylinderPoints){
+        float divisionsPerUnit = 10.0, height = 7.0, distanceToCylinder = std::stof(SettingsFile::StringSetting("distanceToTestCylinder"));
+        Eigen::MatrixXi cylinderDivisions = Eigen::MatrixXi((int)(height * divisionsPerUnit), (int)((M_PI * 2 * distanceToCylinder) * divisionsPerUnit));
+        cylinderDivisions.setZero();
+
+        for (auto point : cylinderPoints.rowwise()){
+            //place a '1' in each element of the matrix corresponding to a point found via Lidar
+            cylinderDivisions.coeffRef(round(point.coeffRef(2) * divisionsPerUnit),
+                                       round(point.coeffRef(1) * distanceToCylinder * divisionsPerUnit)) = 1;
+        }
+        return cylinderDivisions.sum();
+    }
+
     void ScalePointToVehicleBoundingBox(Perceptron * network, Eigen::RowVectorXf points){
         int numberOfLidar = std::stoi(SettingsFile::StringSetting("numberOfLiDAR"));
         float x, y, z;
@@ -163,19 +155,7 @@ namespace LiDAR{
                 toCarla += std::to_string(Point.coeffRef(2));
             }
         }
-        PythonAPI::RunPyScript("debugVisualizer", toCarla);
+        PythonAPI::RunPyScript("debugVisualizer", toCarla, SettingsFile::StringSetting("debugVisPyScriptLoc"));
     }
 
-    int CalculateTotalLidarOccupancy(Eigen::MatrixX3f cylinderPoints){
-        float divisionsPerUnit = 10.0, height = 7.0, distanceToCylinder = std::stof(SettingsFile::StringSetting("distanceToTestCylinder"));
-        Eigen::MatrixXi cylinderDivisions = Eigen::MatrixXi((int)(height * divisionsPerUnit), (int)((M_PI * 2 * distanceToCylinder) * divisionsPerUnit));
-        cylinderDivisions.setZero();
-
-        for (auto point : cylinderPoints.rowwise()){
-            //place a '1' in each element of the matrix corresponding to a point found via Lidar
-            cylinderDivisions.coeffRef(round(point.coeffRef(2) * divisionsPerUnit),
-                                       round(point.coeffRef(1) * distanceToCylinder * divisionsPerUnit)) = 1;
-        }
-        return cylinderDivisions.sum();
-    }
 }

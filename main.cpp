@@ -1,23 +1,30 @@
 #include "mainHeader.h"
 
 int main(int argc, char **argv) {
+    //init
+    //==================================================================================================================
     InitProgram(argv);
 	SetupCARLA();
 
 
+    //start collecting training data
+    //==================================================================================================================
+    Eigen::MatrixX3f vehiclePoints = LiDAR::FetchVehiclePoints();
+    //LiDAR::CheckPointsWithDebugVisualizer(vehiclePoints, true);
 
-    Eigen::MatrixX3f vehiclePoints = LiDAR::FetchVehiclePoints(100);
+    //calculate the total lidar occupancy of each point on the vehicle for ground truth
     std::vector<int> TLOPerPoint;
     for (auto point : vehiclePoints.rowwise()){
-        TLOPerPoint.push_back(LiDAR::CalculateTotalLidarOccupancy(LiDAR::FetchCylinderPoints(point.coeffRef(0), point.coeffRef(1), point.coeffRef(2))));
+        int tlo = LiDAR::CalculateTotalLidarOccupancy(LiDAR::FetchCylinderPoints(point.coeffRef(0),
+                                                                                 point.coeffRef(1),
+                                                                                 point.coeffRef(2)));
+        TLOPerPoint.push_back(tlo);
     }
 
-    for(int i = 0; i < vehiclePoints.rows(); i ++)
-        std::cout << vehiclePoints.row(i) << "|" << TLOPerPoint.at(i) << std::endl;
+    //LiDAR::CheckPointsWithDebugVisualizer(LiDAR::FetchCylinderPoints(),false);
 
-
-
-
+    //clean up
+    //==================================================================================================================
     CloseCARLA();
     CleanProgram();
     return 0;

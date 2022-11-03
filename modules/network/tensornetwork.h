@@ -5,8 +5,8 @@
 #include <fstream>
 #include <stdio.h>
 #include <tensorflow/c/c_api.h>
-#include "settingsfile.h"
-#include "logger.h"
+#include "settingsFile/settingsfile.h"
+#include "logger/logger.h"
 
 
 namespace TFNetwork{

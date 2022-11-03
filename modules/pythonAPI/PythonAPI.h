@@ -4,8 +4,8 @@
 #include <stdio.h>
 #include <string>
 
-#include "settingsfile.h"
-#include "logger.h"
+#include "settingsFile/settingsfile.h"
+#include "logger/logger.h"
 
 namespace PythonAPI{
     void SetupPython(char ** args);
