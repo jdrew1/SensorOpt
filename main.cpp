@@ -6,13 +6,14 @@ int main(int argc, char **argv) {
 
 
 
-    Eigen::MatrixX3f vehiclePoints = LiDAR::FetchVehiclePoints();
-    Eigen::MatrixX3f cylinderPoints = LiDAR::FetchCylinderPoints();
-    //std::vector<int> TLOPerPoint;
-    //TLOPerPoint.push_back(LiDAR::CalculateTotalLidarOccupancy(cylinderPoints));
+    Eigen::MatrixX3f vehiclePoints = LiDAR::FetchVehiclePoints(100);
+    std::vector<int> TLOPerPoint;
+    for (auto point : vehiclePoints.rowwise()){
+        TLOPerPoint.push_back(LiDAR::CalculateTotalLidarOccupancy(LiDAR::FetchCylinderPoints(point.coeffRef(0), point.coeffRef(1), point.coeffRef(2))));
+    }
 
-    LiDAR::CheckPointsWithDebugVisualizer(vehiclePoints, true);
-    LiDAR::CheckPointsWithDebugVisualizer(cylinderPoints, false);
+    for(int i = 0; i < vehiclePoints.rows(); i ++)
+        std::cout << vehiclePoints.row(i) << "|" << TLOPerPoint.at(i) << std::endl;
 
 
 
