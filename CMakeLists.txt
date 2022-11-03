@@ -4,9 +4,9 @@ project(DeepLProject)
 set(CMAKE_CXX_STANDARD 14)
 
 #copy the default settings file to the build directory
-file(COPY carlaInterfacePy.py DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-file(COPY tensorPy.py DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-file(COPY debugVisualizerPy.py DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+file(COPY python/carlaInterfacePy.py DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+file(COPY python/tensorPy.py DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+file(COPY python/debugVisualizerPy.py DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 file(COPY defaultConfig.conf DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
 
