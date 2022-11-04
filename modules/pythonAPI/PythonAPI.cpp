@@ -13,9 +13,6 @@ namespace PythonAPI{
     }
 
     PyObject* RunPyScript(std::string pyFunctName, std::string pythonArgs, std::string pyScriptLoc){
-
-        MyLogger::SaveToLog(("RunPyScript: Running Python Script: " +
-                             pyFunctName + "(" + ")").c_str(), MyLogger::Message);
         PyObject* pName = PyUnicode_FromString(pyScriptLoc.c_str());
         PyObject* pModule = PyImport_Import(pName);
 

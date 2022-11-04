@@ -35,6 +35,7 @@ add_executable(DeepLProject
         modules/logger/logger.cpp
         modules/pythonAPI/PythonAPI.cpp
         modules/network/perceptron.cpp
+        modules/savePoints/savePoints.cpp
         modules/LiDAR/LiDAR.cpp)
 
 target_link_libraries(DeepLProject PUBLIC Python3::Python ${TensorFlow_LIBRARIES})

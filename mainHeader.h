@@ -15,6 +15,8 @@
     #include "settingsFile/settingsfile.h"
     #include "logger/logger.h"
     #include "pythonAPI/PythonAPI.h"
+    #include "savePoints/savePoints.h"
+
     //application specific
     //--------------------------------------------------
     #include "Lidar/LiDAR.h"
@@ -41,7 +43,7 @@
 
     void CloseCARLA(){
         //PythonAPI::RunPyScript("debugVisualizer","");
-        PythonAPI::RunPyScript("closeEnvironment","");
+        PythonAPI::RunPyScript("closeEnvironment","", SettingsFile::StringSetting("carlaPyScriptLoc"));
     }
 
     void CleanProgram() {
