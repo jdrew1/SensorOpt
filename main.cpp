@@ -28,6 +28,7 @@ int main(int argc, char **argv) {
     MyLogger::SaveToLog(("Saving points with TotalLidarOccupancy to file: " + SettingsFile::StringSetting("pointsFilePath")).c_str(), MyLogger::Message);
     SavePoints::SavePointsToDisc(vehiclePoints, TLOPerPoint, true);
 
+    Eigen::MatrixX3f retrievedPoints = SavePoints::ReadPointsFromDisc(&TLOPerPoint);
 
 
     //clean up

@@ -15,8 +15,8 @@ namespace MyLogger{
         else{
             logFile.close();
             logFile.open(logPath, ios::app);
-            logFile << "New run of program: " << ctime(&currentTime) << "----------------------------------------" << endl;
-            std::cout << "New run of program: " << ctime(&currentTime) << "----------------------------------------" << endl;
+            logFile << std::endl << "New run of program: " << ctime(&currentTime) << "----------------------------------------" << endl;
+            std::cout << std::endl << "New run of program: " << ctime(&currentTime) << "----------------------------------------" << endl;
         }
         logFile.close();
     }
