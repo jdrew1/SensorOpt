@@ -123,8 +123,7 @@ class Buffer:
         # use gradient tape to find training direction for actor and critic
         with tf.GradientTape() as tape:
             target_actions = self.target_actor(next_state_batch, training=True)
-            target_actions = self.target_actor(next_state_batch, training=True)
-            y = reward_batch + self.gamma * self.target_critic([next_state_batch, target_actions], training=True)
+            y = reward_batch + (1-self.gamma) * self.target_critic([next_state_batch, target_actions], training=True)
             critic_value = self.critic_model([state_batch, action_batch], training=True)
             critic_loss = tf.math.reduce_mean(tf.math.square(y - critic_value))
         critic_grad = tape.gradient(critic_loss, self.critic_model.trainable_variables)
