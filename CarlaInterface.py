@@ -71,7 +71,7 @@ def place_cylinder_and_car(distance=10.0):
     global bp_lib
     global vehicle_bp
     # Add vehicle
-    vehicle_bp = bp_lib.find('vehicle.lincoln.mkz_2020')
+    vehicle_bp = bp_lib.find('vehicle.audi.etron')
     vehicle = world.try_spawn_actor(vehicle_bp, carla.Transform(carla.Location(x=0, y=0, z=0.2)))
     # Spawn test cylinder
     box_bp = bp_lib.filter('box02*')[0]
@@ -236,9 +236,9 @@ def correct_input_points_to_point_on_vehicle(input_sensor_coords):
         # use the normal map to offset the sensor a bit off the car
         vehicle_points.estimate_normals()
         vehicle_points.orient_normals_to_align_with_direction(vehicle_points.points[closest_point_index])
-        output[i] = np.copy(np.array([[vehicle_points.points[closest_point_index][0] + 0.1*vehicle_points.normals[closest_point_index][0],
-                                       vehicle_points.points[closest_point_index][1] + 0.1*vehicle_points.normals[closest_point_index][1],
-                                       vehicle_points.points[closest_point_index][2] + 0.1*vehicle_points.normals[closest_point_index][2]]]))
+        output[i] = np.copy(np.array([[vehicle_points.points[closest_point_index][0] + 0.2*vehicle_points.normals[closest_point_index][0],
+                                       vehicle_points.points[closest_point_index][1] + 0.2*vehicle_points.normals[closest_point_index][1],
+                                       vehicle_points.points[closest_point_index][2] + 0.2*vehicle_points.normals[closest_point_index][2]]]))
     return output
 
 
@@ -343,10 +343,10 @@ def calculate_sensor_occlusion(input_points, coordinates, index):
         distance = math.sqrt((coordinates[i, 0] - coordinates[index, 0])**2 + (coordinates[i, 1] - coordinates[index, 1])**2)
         if distance <= 0.1:
             return np.zeros(shape=input_points.shape)
-        top = (coordinates[index, 2] + 10/distance*(coordinates[i, 2] - coordinates[index, 2] + 0.05))
-        bottom = (coordinates[index, 2] + 10/distance*(coordinates[i, 2] - coordinates[index, 2] - 0.05))
-        left = (math.atan2(coordinates[i, 1] - coordinates[index, 1], coordinates[i, 0] - coordinates[index, 0]) + math.sin(0.2/distance))
-        right = (math.atan2(coordinates[i, 1] - coordinates[index, 1], coordinates[i, 0] - coordinates[index, 0]) - math.sin(0.2/distance))
+        top = (coordinates[index, 2] + 10/distance*(coordinates[i, 2] - coordinates[index, 2] + 0.2))
+        bottom = (coordinates[index, 2] + 10/distance*(coordinates[i, 2] - coordinates[index, 2] - 0.2))
+        left = (math.atan2(coordinates[i, 1] - coordinates[index, 1], coordinates[i, 0] - coordinates[index, 0]) + math.sin(0.4/distance))
+        right = (math.atan2(coordinates[i, 1] - coordinates[index, 1], coordinates[i, 0] - coordinates[index, 0]) - math.sin(0.4/distance))
         left = left + 2*math.pi if left < 0 else left
         right = right + 2*math.pi if right < 0 else right
         if top > 4.0:
@@ -375,9 +375,9 @@ def calculate_tlo_with_occlusion(coords, cylinder_shape=(360, 40), downsample=Tr
         coords = np.asarray([[1, 1, 2], [-1, 1, 2], [1, -1, 2], [-1, -1, 2]], dtype=float)
     np_coords = np.asarray(coords)
     np_coords = np_coords.reshape((-1, 3))
-    occluded_surface = np.zeros(shape=cylinder_shape)
     total_surface = np.zeros(shape=cylinder_shape)
     for index in range(np_coords.shape[0]):
+        occluded_surface = np.zeros(shape=cylinder_shape)
         placeSensor(np_coords[index], place_sensor_outside_of_vehicle=False)
         measure_points = fetchLiDARMeasurement()
         if downsample:
@@ -410,7 +410,7 @@ def calculate_tlo_with_occlusion(coords, cylinder_shape=(360, 40), downsample=Tr
     if np_coords.shape[0] > 1:
         def redundancy_scaling(x, num_sensors=np_coords.shape[0]):
             # return 1 if x > 0 else 0
-            return (2-(0.5)**(x-1))/(2-(0.5)**(num_sensors-1)) if np_coords.shape[0] != 2 else (2-(0.5)**(x-1))/(2-(0.5)**(num_sensors-1))*2
+            return (2-(0.5)**(x-1))/(2-(0.5)**(num_sensors-1))
         total_surface = np.vectorize(redundancy_scaling)(total_surface)
     # debugVisualizer.debugVisualizer(measure_points)
     return total_surface
@@ -446,36 +446,66 @@ def select_random_vehicle(search_params='*vehicle*'):
 
 
 def create_color_cylinder_surface(sensor_coords):
-    placeSensor(sensor_coords[0],  place_sensor_outside_of_vehicle=False)
+    placeSensor(np.array([[0.0, 0.0, 2.0]]),  place_sensor_outside_of_vehicle=False)
     measure_points = np.asarray(
         open3d.geometry.PointCloud(open3d.utility.Vector3dVector(fetchLiDARMeasurement())).voxel_down_sample(
             voxel_size=.005).points)
     cylinder_points = cartesian_to_cylindrical_coords(measure_points)
     # debugVisualizer.debugVisualizer(cylinder_points, cylindrical=True, downsample=False)
-    tlo_surface = calculate_test_cylinder_surface(measure_points, cylinder_shape=(360, 20))
-    occluded_surface = tlo_surface - calculate_sensor_occlusion(np.copy(tlo_surface), sensor_coords, 0)
+    tlo_surface = calculate_tlo_with_occlusion(coords=sensor_coords, cylinder_shape=(720, 40), front_and_back_scaling=False)
     colors = np.zeros(shape=measure_points.shape)
     for point in range(cylinder_points.shape[0]):
         if 0 <= cylinder_points[point, 2] <= 4 and cylinder_points[point, 0] > 9.0:
-            if tlo_surface[int(tlo_surface.shape[0]*cylinder_points[point, 1]/(2*math.pi)), int(tlo_surface.shape[1]*(cylinder_points[point, 2]/4.0))] == 1:
-                if occluded_surface[int(tlo_surface.shape[0]*cylinder_points[point, 1]/(2*math.pi)), int(tlo_surface.shape[1]*(cylinder_points[point, 2]/4.0))] == 1:
-                    colors[point] = [1.0, 0.0, 0.0]
-                else:
-                    colors[point] = [0.0, 1.0, 0.0]
-            else:
-                colors[point] = [0.0, 0.0, 1.0]
+            colors[point] = [0.0, tlo_surface[int(tlo_surface.shape[0]*cylinder_points[point, 1]/(2*math.pi)), int(tlo_surface.shape[1]*(cylinder_points[point, 2]/4.0))], 0.0]
     return measure_points, colors
 
 
 def find_tlo_of_car_mesh(testBox=True):
-    setup_carla_environment(no_render=True)
+    setup_carla_environment(no_render=True, macos=True)
     place_cylinder_and_car()
     color_map = np.array(cm.get_cmap('turbo').colors)
     color_range = np.linspace(0.0, 1.0, color_map.shape[0])
     if testBox:
         points = testBoxMesh(5000, True, True)
     else:
-        points = findCarMesh(5000, True, True)
+        points = findCarMesh(4000, True, True)
+    debugVisualizer.debugVisualizer(points)
+    colors = np.zeros(shape=points.shape)
+
+    # points = points[points[:, 2].argsort()]
+    # points = points[points[:, 1].argsort(kind='mergesort')]
+    # points = points[points[:, 0].argsort(kind='mergesort')]
+    print("range: ", points.shape[0])
+    max_value = 0.0
+    const_coords = np.array([[0.0, 0.0, 2.0]])
+    for point in range(points.shape[0]):
+        start_time = time.thread_time()
+        sensor_coord = correct_input_points_to_point_on_vehicle(np.copy(points[point]))
+        intensity = calculate_tlo_with_occlusion(np.append(const_coords, sensor_coord, axis=0), cylinder_shape=(720, 20), front_and_back_scaling=False).sum()/720/20
+        if intensity > max_value:
+            max_value = intensity
+        print("point: ", point, " |return : ", intensity, " |time: ", time.thread_time() - start_time)
+        colors[point] = np.array([np.interp(intensity, color_range, color_map[:, 0]),
+                                  np.interp(intensity, color_range, color_map[:, 1]),
+                                  np.interp(intensity, color_range, color_map[:, 2])])
+    points = np.append(points, const_coords, axis=0)
+    colors = np.append(colors, np.array([[0.0, 0.0, 1.0]]), axis=0)
+    print(max_value)
+    debugVisualizer.debugVisualizer(points, color_list=colors, colors=True, downsample=False)
+
+
+def find_car_mesh_q_function(testBox=False):
+    from TensorflowInterface import create_critic
+    import tensorflow as tf
+    critic_network = create_critic(6000*3, 1*3, 'model_6000_1_mix/critic')
+    setup_carla_environment(no_render=True, macos=True)
+    place_cylinder_and_car()
+    color_map = np.array(cm.get_cmap('turbo').colors)
+    color_range = np.linspace(0.0, 1.0, color_map.shape[0])
+    if testBox:
+        points = testBoxMesh(6000, True, False)
+    else:
+        points = findCarMesh(6000, True, False)
     debugVisualizer.debugVisualizer(points)
     colors = np.zeros(shape=points.shape)
 
@@ -486,7 +516,7 @@ def find_tlo_of_car_mesh(testBox=True):
     for point in range(points.shape[0]):
         start_time = time.thread_time()
         sensor_coord = correct_input_points_to_point_on_vehicle(np.copy(points[point]))
-        intensity = float(point)/float(points.shape[0])  #calculate_tlo_with_occlusion(sensor_coord, cylinder_shape=(720, 20), front_and_back_scaling=False).sum()/720/20
+        intensity = (float(critic_network.call((tf.convert_to_tensor(points.reshape(1, -1)), tf.convert_to_tensor(sensor_coord.reshape(1, -1))), training=False)) + 1) / 2
         print("point: ", point, " |return : ", intensity, " |time: ", time.thread_time() - start_time)
         colors[point] = np.array([np.interp(intensity, color_range, color_map[:, 0]),
                                   np.interp(intensity, color_range, color_map[:, 1]),
@@ -500,13 +530,13 @@ def show_color_lidar_measurement(testBox=False, coords=np.array([[0.0, 0.0, 2.0]
         points = testBoxMesh(5000, True, True)
     else:
         points = findCarMesh(5000, True, True)
-    debugVisualizer.debugVisualizer(points)
+    # debugVisualizer.debugVisualizer(points)
     colors = np.zeros(shape=points.shape)
     colored_surface, colors = create_color_cylinder_surface(coords)
     combined_points = np.vstack((points, colored_surface, coords))
     sensor_colors = np.zeros(shape=coords.shape)
-    sensor_colors[0] = [1.0, 0.0, 0.0]
-    sensor_colors[1:] = [0.3, 0.0, 1.0]
+    sensor_colors[0] = [0.0, 0.0, 1.0]
+    sensor_colors[1:] = [0.0, 0.0, 1.0]
     combined_colors = np.vstack((np.full(shape=points.shape, fill_value=0.7), colors, sensor_colors))
     color_cloud = open3d.geometry.PointCloud(open3d.utility.Vector3dVector(combined_points))
     color_cloud.colors = open3d.utility.Vector3dVector(combined_colors)
@@ -527,14 +557,21 @@ def closeEnvironment(macos=False):
 
 if __name__ == '__main__':
     try:
-        #setup_carla_environment()
-        #place_cylinder_and_car()
+        setup_carla_environment(macos=True)
+        place_cylinder_and_car()
+        findCarMesh(6000, True, False)
         #testBoxMesh(setNumber=True)
-        # [[0.0, 0.0, 2.0], [0.4, 0.0, 2.0], [-0.4, 0.0, 2.0], [0.0, 0.4, 2.0], [0.0, -0.4, 2.0]]
-        #coords = correct_input_points_to_point_on_vehicle(np.array([[4.0, 4.0, 2.0], [-4.0, 4.0, 2.0], [4.0, -4.0, 2.0], [-4.0, -4.0, 2.0]]))
-        #show_color_lidar_measurement(testBox=True, coords=np.array(coords))
+        # [[0.0, 0.0, 0.0], [0.4, 0.0, 2.0], [-0.4, 0.0, 2.0], [0.0, 0.4, 2.0], [0.0, -0.4, 2.0]]
+        #coords = correct_input_points_to_point_on_vehicle(np.array([[0.0, 0.0, 0.0]]))
+        coords = np.array([
+            [0.0, 0.0, 2.0],
+            [0.0, 1.2, 1.0]
+        ])
+        show_color_lidar_measurement(testBox=False, coords=coords)
+        print(calculate_tlo_with_occlusion(coords=coords, cylinder_shape=(720, 40), front_and_back_scaling=False).sum()/720/40)
         #print(calculate_tlo_with_occlusion(coords=coords, downsample=True).sum() / 360 / 40)
 
-        find_tlo_of_car_mesh(False)
+        # find_tlo_of_car_mesh(False)
+        # find_car_mesh_q_function()
     finally:
         closeEnvironment(macos=True)

@@ -10,28 +10,29 @@ import TensorflowInterface
 import debugVisualizer
 
 
-def run_test(macos=False, load_trained_model="model_6000_1_mix/", save_dir="model_6000_1_mix/",
-             train_networks=True):
+def run_test(macos=False, load_trained_model="", save_dir="", train_networks=True):
     env = CarlaWrapper.CarlaWrapperEnv(
         macos=macos,
         numOfPoints=6000,
         numOfLiDAR=1,
-        no_render=False,
+        no_render=True,
         test_box=False,
         cylinder_shape=(720, 20),
         down_sample_lidar=True,
         front_and_back_scaling=False,
-        shuffle_vehicles=True
+        shuffle_vehicles=False
     )
     place_sensor_on_surface = True
 
+    random_action = False
+
     # Learning rate for actor-critic models
-    critic_lr = 0.002
-    actor_lr = 0.001
+    critic_lr = 0.02
+    actor_lr = 0.04
 
     total_episodes = 100
-    iterations_per_episode = 2
-    buffer_length = 5000
+    iterations_per_episode = 5
+    buffer_length = 20
     training_batch_size = 64
     # target network update rate
     rho = 0.995
@@ -42,7 +43,7 @@ def run_test(macos=False, load_trained_model="model_6000_1_mix/", save_dir="mode
     # start noise high for better searching, then decrease to hone
     def std_dev(step):
         # return 0.02
-        return float(1.0 / (step/20 + 1)) * np.ones(env.action_spec.shape[0])
+        return float(3.0 / (step/10 + 1)) * np.ones(env.action_spec.shape[0])
     ou_noise = TensorflowInterface.OUActionNoise(mean=np.zeros(env.action_spec.shape[0]), std_deviation_function=std_dev)
 
     actor_model = TensorflowInterface.create_actor(env.observation_spec.shape[0], env.action_spec.shape[0],
@@ -68,7 +69,7 @@ def run_test(macos=False, load_trained_model="model_6000_1_mix/", save_dir="mode
     buffer = TensorflowInterface.Buffer(actor_model, critic_model, actor_optimizer, critic_optimizer, target_actor, target_critic,
                                         buffer_length, iterations_per_episode*training_batch_size, num_lidar=env.action_spec.shape[0])
 
-    # store list of rewards in more convienent format than buffer
+    # store list of rewards in more convenient format than buffer
     ep_reward_list = []
     # rolling average to show change over time
     avg_reward_list = []
@@ -83,7 +84,7 @@ def run_test(macos=False, load_trained_model="model_6000_1_mix/", save_dir="mode
             # generate action with noise
             action = TensorflowInterface.policy_with_noise(tf_prev_state, ou_noise, actor_model,
                                                            env.action_spec.low, env.action_spec.high,
-                                                           ep*iterations_per_episode, place_sensor_on_surface)
+                                                           ep*iterations_per_episode, place_sensor_on_surface, random_action)
             state, reward, done, info = env.step(action)
             # record experience to buffer
             buffer.record((prev_state, action, reward, state))
@@ -101,14 +102,19 @@ def run_test(macos=False, load_trained_model="model_6000_1_mix/", save_dir="mode
         ep_reward_list.append(episodic_reward)
 
         # Mean of last 10 episodes
-        avg_reward = np.mean(ep_reward_list[-20:])
+        avg_reward = np.mean(ep_reward_list[-2:])
         print("Episode * {} * Action {}* Avg Reward is ==> {}".format(ep, action, avg_reward))
         print("Time elapse: ", time.thread_time() - start_time)
         avg_reward_list.append(avg_reward)
 
     # Plotting graph
     # Episodes versus Avg. Rewards
-    show_training_path(coords_replay=np.copy(buffer.action_buffer[:(buffer.buffer_counter+1) % buffer.buffer_capacity, :]))
+
+    for i in range((buffer.buffer_counter+1) % buffer.buffer_capacity):
+        print("[" + str(buffer.action_buffer[i,0]) + ", " + str(buffer.action_buffer[i,1]) + ", " + str(buffer.action_buffer[i,2]) + "], ")
+    from CarlaInterface import show_color_lidar_measurement
+    # show_color_lidar_measurement(False, buffer.action_buffer[:buffer.buffer_counter, :])
+    # show_training_path(coords_replay=np.copy(buffer.action_buffer[:(buffer.buffer_counter+1) % buffer.buffer_capacity, :]))
     plt.plot(avg_reward_list)
     plt.xlabel("")
     plt.ylabel("Average Lidar Occupancy")
@@ -122,10 +128,11 @@ def run_test(macos=False, load_trained_model="model_6000_1_mix/", save_dir="mode
     target_actor.compile()
     target_critic.compile()
 
-    actor_model.save(save_dir + "actor")
-    critic_model.save(save_dir + "critic")
-    target_actor.save(save_dir + "target_actor")
-    target_critic.save(save_dir + "target_critic")
+    if save_dir != "":
+        actor_model.save(save_dir + "actor")
+        critic_model.save(save_dir + "critic")
+        target_actor.save(save_dir + "target_actor")
+        target_critic.save(save_dir + "target_critic")
 
 
 def show_training_path(coords_replay):

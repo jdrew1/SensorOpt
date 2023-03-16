@@ -5,8 +5,15 @@ import numpy as np
 from CarlaInterface import correct_input_points_to_point_on_vehicle
 
 
-def policy_with_noise(state, noise_object, actor_model, lower_bound, upper_bound, step, place_sensor_on_vehicle=True):
-    sampled_actions = tf.squeeze(actor_model(state))
+def policy_with_noise(state, noise_object, actor_model, lower_bound, upper_bound, step, place_sensor_on_vehicle=True, random=False):
+    if random:
+        sampled_actions = tf.squeeze(np.random.uniform(low=[-3.0, -3.0, 0.5], high=[3.0, 3.0, 3.5], size=3))
+        legal_action = np.clip(sampled_actions, lower_bound, upper_bound)
+        if place_sensor_on_vehicle:
+            legal_action = correct_input_points_to_point_on_vehicle(legal_action).flatten()
+        return np.squeeze(legal_action)
+    else:
+        sampled_actions = tf.squeeze(actor_model(state))
     noise = noise_object(step)
     # add noise to help search
     sampled_actions = sampled_actions.numpy() + noise
@@ -34,6 +41,7 @@ def create_actor(num_points, num_lidar, upper_bound, lower_bound, load_from_file
     output_space_span = upper_bound - lower_bound
     outputs = (((outputs + 1)/2 * output_space_span) + lower_bound)
     model = tf.keras.Model(inputs, outputs)
+    model.compile()
     return model
 
 
@@ -45,15 +53,16 @@ def create_critic(num_points, num_lidar, load_from_file=''):
     state_input = layers.Input(shape=(num_points,))
     state_out = layers.Dense(2048, activation="relu")(state_input)
     state_out = layers.Dense(1024, activation="relu")(state_out)
-    state_out = layers.Dense(512, activation="relu")(state_out)
+    state_out = layers.Dense(256, activation="relu")(state_out)
     action_input = layers.Input(shape=(num_lidar,))
     action_out = layers.Dense(128, activation="relu")(action_input)
+    action_out = layers.Dense(256, activation="relu")(action_out)
     concat = layers.Concatenate()([state_out, action_out])
     out = layers.Dense(512, activation="relu")(concat)
     out = layers.Dense(256, activation="relu")(out)
-    out = layers.Dense(16, activation="relu")(out)
     outputs = layers.Dense(1)(out)
     model = tf.keras.Model([state_input, action_input], outputs)
+    model.compile()
     return model
 
 
