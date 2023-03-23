@@ -10,7 +10,7 @@ import TensorflowInterface
 import debugVisualizer
 
 
-def run_test(macos=False, load_trained_model="", save_dir="", train_networks=True):
+def run_test(macos=False, load_trained_model="model_1_rand", save_dir="", train_networks=True):
     env = CarlaWrapper.CarlaWrapperEnv(
         macos=macos,
         numOfPoints=6000,
@@ -24,39 +24,38 @@ def run_test(macos=False, load_trained_model="", save_dir="", train_networks=Tru
     )
     place_sensor_on_surface = True
 
-    random_action = False
+    random_action = True
 
     # Learning rate for actor-critic models
     critic_lr = 0.02
     actor_lr = 0.04
 
-    total_episodes = 100
+    total_episodes = 200
     iterations_per_episode = 5
-    buffer_length = 20
+    buffer_length = 200
     training_batch_size = 64
     # target network update rate
-    rho = 0.995
+    rho = 0.95
 
     print("Size of State Space ->  {}".format(env.observation_spec.shape[0]))
     print("Size of Action Space ->  {}".format(env.action_spec.shape[0]))
 
     # start noise high for better searching, then decrease to hone
     def std_dev(step):
-        # return 0.02
-        return float(3.0 / (step/10 + 1)) * np.ones(env.action_spec.shape[0])
+        return float(1.0 / (step/10 + 1)) * np.ones(env.action_spec.shape[0])
     ou_noise = TensorflowInterface.OUActionNoise(mean=np.zeros(env.action_spec.shape[0]), std_deviation_function=std_dev)
 
     actor_model = TensorflowInterface.create_actor(env.observation_spec.shape[0], env.action_spec.shape[0],
                                                    env.action_spec.high, env.action_spec.low,
-                                                   (load_trained_model + 'actor') if load_trained_model != '' else '')
+                                                   (load_trained_model + '/actor') if load_trained_model != '' else '')
     critic_model = TensorflowInterface.create_critic(env.observation_spec.shape[0], env.action_spec.shape[0],
-                                                     (load_trained_model + 'critic') if load_trained_model != '' else '')
+                                                     (load_trained_model + '/critic') if load_trained_model != '' else '')
 
     target_actor = TensorflowInterface.create_actor(env.observation_spec.shape[0], env.action_spec.shape[0],
                                                     env.action_spec.high, env.action_spec.low,
-                                                    (load_trained_model + 'target_actor') if load_trained_model != '' else '')
+                                                    (load_trained_model + '/target_actor') if load_trained_model != '' else '')
     target_critic = TensorflowInterface.create_critic(env.observation_spec.shape[0], env.action_spec.shape[0],
-                                                      (load_trained_model + 'target_critic') if load_trained_model != '' else '')
+                                                      (load_trained_model + '/target_critic') if load_trained_model != '' else '')
 
     # to initialize, target = learning
     if load_trained_model == '':
@@ -67,7 +66,7 @@ def run_test(macos=False, load_trained_model="", save_dir="", train_networks=Tru
     actor_optimizer = tf.keras.optimizers.Adam(actor_lr)
 
     buffer = TensorflowInterface.Buffer(actor_model, critic_model, actor_optimizer, critic_optimizer, target_actor, target_critic,
-                                        buffer_length, iterations_per_episode*training_batch_size, num_lidar=env.action_spec.shape[0])
+                                        buffer_length, training_batch_size, num_points=env.observation_spec.shape[0], num_lidar=env.action_spec.shape[0])
 
     # store list of rewards in more convenient format than buffer
     ep_reward_list = []
@@ -103,7 +102,7 @@ def run_test(macos=False, load_trained_model="", save_dir="", train_networks=Tru
 
         # Mean of last 10 episodes
         avg_reward = np.mean(ep_reward_list[-2:])
-        print("Episode * {} * Action {}* Avg Reward is ==> {}".format(ep, action, avg_reward))
+        print("Episode * {} * Action {} * Avg Reward is ==> {}".format(ep, action, avg_reward))
         print("Time elapse: ", time.thread_time() - start_time)
         avg_reward_list.append(avg_reward)
 
@@ -129,10 +128,10 @@ def run_test(macos=False, load_trained_model="", save_dir="", train_networks=Tru
     target_critic.compile()
 
     if save_dir != "":
-        actor_model.save(save_dir + "actor")
-        critic_model.save(save_dir + "critic")
-        target_actor.save(save_dir + "target_actor")
-        target_critic.save(save_dir + "target_critic")
+        actor_model.save(save_dir + "/actor")
+        critic_model.save(save_dir + "/critic")
+        target_actor.save(save_dir + "/target_actor")
+        target_critic.save(save_dir + "/target_critic")
 
 
 def show_training_path(coords_replay):
@@ -152,5 +151,6 @@ if __name__ == '__main__':
         # debugMethods:
         # CarlaInterface.show_color_lidar_measurement(testBox=False)
         # CarlaInterface.find_tlo_of_car_mesh(testBox=False)
+        CarlaInterface.find_car_mesh_q_function(testBox=False, load_model_file='model_1_rand')
     finally:
         CarlaInterface.closeEnvironment(macos=open_and_close_automatically)

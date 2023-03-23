@@ -37,9 +37,9 @@ def create_actor(num_points, num_lidar, upper_bound, lower_bound, load_from_file
     out = layers.Dense(512, activation="relu")(out)
     out = layers.Dense(512, activation="relu")(out)
     out = layers.Dense(256, activation="relu")(out)
-    outputs = layers.Dense(num_lidar, activation="tanh", kernel_initializer=last_init)(out)
+    outputs = layers.Dense(num_lidar, activation="sigmoid", kernel_initializer=last_init)(out)
     output_space_span = upper_bound - lower_bound
-    outputs = (((outputs + 1)/2 * output_space_span) + lower_bound)
+    outputs = ((outputs * output_space_span) + lower_bound)
     model = tf.keras.Model(inputs, outputs)
     model.compile()
     return model
@@ -84,7 +84,7 @@ class OUActionNoise:
         self.reset()
 
     def __call__(self, step):
-        x = (self.x_prev + self.theta * (self.mean - self.x_prev) * self.dt + self.std_dev(step) * np.sqrt(self.dt) * np.random.normal(size=self.mean.shape))
+        x = np.random.normal(size=self.mean.shape, scale=self.std_dev(step))
         self.x_prev = x
         return x
 
@@ -98,11 +98,11 @@ class OUActionNoise:
 # experience replay buffer
 class Buffer:
     def __init__(self, actor_model, critic_model, actor_optimizer, critic_optimizer, target_actor, target_critic,
-                 buffer_capacity=100000, batch_size=32, num_points=18000, num_lidar=3, gamma=0.99):
+                 buffer_capacity=100000, batch_size=32, num_points=18000, num_lidar=3, rho=0.99):
         self.buffer_capacity = buffer_capacity
         self.batch_size = batch_size
         self.buffer_counter = 0
-        self.gamma = gamma
+        self.rho = rho
 
         self.state_buffer = np.zeros((self.buffer_capacity, num_points))
         self.action_buffer = np.zeros((self.buffer_capacity, num_lidar))
@@ -132,7 +132,7 @@ class Buffer:
         # use gradient tape to find training direction for actor and critic
         with tf.GradientTape() as tape:
             target_actions = self.target_actor(next_state_batch, training=True)
-            y = reward_batch + (1-self.gamma) * self.target_critic([next_state_batch, target_actions], training=True)
+            y = reward_batch + (1 - self.rho) * self.target_critic([next_state_batch, target_actions], training=True)
             critic_value = self.critic_model([state_batch, action_batch], training=True)
             critic_loss = tf.math.reduce_mean(tf.math.square(y - critic_value))
         critic_grad = tape.gradient(critic_loss, self.critic_model.trainable_variables)
@@ -147,7 +147,7 @@ class Buffer:
     # computer loss and update weights and biases
     def learn(self):
         record_range = min(self.buffer_counter, self.buffer_capacity)
-        batch_indices = np.random.choice(record_range, self.batch_size)
+        batch_indices = np.random.choice(record_range, min(self.batch_size, record_range))
         state_batch = tf.convert_to_tensor(self.state_buffer[batch_indices])
         action_batch = tf.convert_to_tensor(self.action_buffer[batch_indices])
         reward_batch = tf.convert_to_tensor(self.reward_buffer[batch_indices])

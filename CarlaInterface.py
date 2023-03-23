@@ -460,7 +460,7 @@ def create_color_cylinder_surface(sensor_coords):
     return measure_points, colors
 
 
-def find_tlo_of_car_mesh(testBox=True):
+def find_tlo_of_car_mesh(testBox=True, const_coords=np.zeros(shape=(0, 3))):
     setup_carla_environment(no_render=True, macos=True)
     place_cylinder_and_car()
     color_map = np.array(cm.get_cmap('turbo').colors)
@@ -468,16 +468,11 @@ def find_tlo_of_car_mesh(testBox=True):
     if testBox:
         points = testBoxMesh(5000, True, True)
     else:
-        points = findCarMesh(4000, True, True)
+        points = findCarMesh(5000, True, True)
     debugVisualizer.debugVisualizer(points)
     colors = np.zeros(shape=points.shape)
-
-    # points = points[points[:, 2].argsort()]
-    # points = points[points[:, 1].argsort(kind='mergesort')]
-    # points = points[points[:, 0].argsort(kind='mergesort')]
     print("range: ", points.shape[0])
     max_value = 0.0
-    const_coords = np.array([[0.0, 0.0, 2.0]])
     for point in range(points.shape[0]):
         start_time = time.thread_time()
         sensor_coord = correct_input_points_to_point_on_vehicle(np.copy(points[point]))
@@ -488,25 +483,26 @@ def find_tlo_of_car_mesh(testBox=True):
         colors[point] = np.array([np.interp(intensity, color_range, color_map[:, 0]),
                                   np.interp(intensity, color_range, color_map[:, 1]),
                                   np.interp(intensity, color_range, color_map[:, 2])])
-    points = np.append(points, const_coords, axis=0)
-    colors = np.append(colors, np.array([[0.0, 0.0, 1.0]]), axis=0)
+    if const_coords.shape[0] > 0:
+        sensor_colors = np.zeros(shape=const_coords.shape)
+        sensor_colors[:] = [0.0, 0.0, 1.0]
+        points = np.append(points, const_coords, axis=0)
+        colors = np.append(colors, sensor_colors, axis=0)
     print(max_value)
     debugVisualizer.debugVisualizer(points, color_list=colors, colors=True, downsample=False)
 
 
-def find_car_mesh_q_function(testBox=False):
+def find_car_mesh_q_function(testBox=False, load_model_file='model_6000_1_mix'):
     from TensorflowInterface import create_critic
     import tensorflow as tf
-    critic_network = create_critic(6000*3, 1*3, 'model_6000_1_mix/critic')
-    setup_carla_environment(no_render=True, macos=True)
-    place_cylinder_and_car()
+    critic_network = create_critic(6000*3, 1*3, load_model_file + '/critic')
     color_map = np.array(cm.get_cmap('turbo').colors)
     color_range = np.linspace(0.0, 1.0, color_map.shape[0])
     if testBox:
         points = testBoxMesh(6000, True, False)
     else:
         points = findCarMesh(6000, True, False)
-    debugVisualizer.debugVisualizer(points)
+    # debugVisualizer.debugVisualizer(points)
     colors = np.zeros(shape=points.shape)
 
     # points = points[points[:, 2].argsort()]
@@ -516,7 +512,7 @@ def find_car_mesh_q_function(testBox=False):
     for point in range(points.shape[0]):
         start_time = time.thread_time()
         sensor_coord = correct_input_points_to_point_on_vehicle(np.copy(points[point]))
-        intensity = (float(critic_network.call((tf.convert_to_tensor(points.reshape(1, -1)), tf.convert_to_tensor(sensor_coord.reshape(1, -1))), training=False)) + 1) / 2
+        intensity = float(critic_network.call((tf.convert_to_tensor(points.reshape(1, -1)), tf.convert_to_tensor(sensor_coord.reshape(1, -1))), training=False))
         print("point: ", point, " |return : ", intensity, " |time: ", time.thread_time() - start_time)
         colors[point] = np.array([np.interp(intensity, color_range, color_map[:, 0]),
                                   np.interp(intensity, color_range, color_map[:, 1]),
@@ -557,21 +553,19 @@ def closeEnvironment(macos=False):
 
 if __name__ == '__main__':
     try:
+        coords = np.array([
+            [0.0, 0.0, 1.9],
+            [-1.5, 0.0, 1.9]
+        ])
+        """
         setup_carla_environment(macos=True)
         place_cylinder_and_car()
         findCarMesh(6000, True, False)
         #testBoxMesh(setNumber=True)
-        # [[0.0, 0.0, 0.0], [0.4, 0.0, 2.0], [-0.4, 0.0, 2.0], [0.0, 0.4, 2.0], [0.0, -0.4, 2.0]]
-        #coords = correct_input_points_to_point_on_vehicle(np.array([[0.0, 0.0, 0.0]]))
-        coords = np.array([
-            [0.0, 0.0, 2.0],
-            [0.0, 1.2, 1.0]
-        ])
+        find_car_mesh_q_function(testBox=False, load_model_file='model_1_rand')
         show_color_lidar_measurement(testBox=False, coords=coords)
         print(calculate_tlo_with_occlusion(coords=coords, cylinder_shape=(720, 40), front_and_back_scaling=False).sum()/720/40)
-        #print(calculate_tlo_with_occlusion(coords=coords, downsample=True).sum() / 360 / 40)
-
-        # find_tlo_of_car_mesh(False)
-        # find_car_mesh_q_function()
+        """
+        # find_tlo_of_car_mesh(False, const_coords=coords)  # """
     finally:
         closeEnvironment(macos=True)
