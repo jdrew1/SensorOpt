@@ -33,8 +33,6 @@ def create_actor(num_points, num_lidar, upper_bound, lower_bound, load_from_file
     inputs = layers.Input(shape=(num_points,))
     out = layers.Flatten()(inputs)
     out = layers.Dense(2048, activation="relu")(out)
-    out = layers.Dense(2048, activation="relu")(out)
-    out = layers.Dense(512, activation="relu")(out)
     out = layers.Dense(512, activation="relu")(out)
     out = layers.Dense(256, activation="relu")(out)
     outputs = layers.Dense(num_lidar, activation="sigmoid", kernel_initializer=last_init)(out)
@@ -139,7 +137,7 @@ class Buffer:
         self.critic_optimizer.apply_gradients(zip(critic_grad, self.critic_model.trainable_variables))
         with tf.GradientTape() as tape:
             actions = self.actor_model(state_batch, training=True)
-            critic_value = self.critic_model([state_batch, actions], training=True)
+            critic_value = self.target_critic([state_batch, actions], training=True)
             actor_loss = -tf.math.reduce_mean(critic_value)
         actor_grad = tape.gradient(actor_loss, self.actor_model.trainable_variables)
         self.actor_optimizer.apply_gradients(zip(actor_grad, self.actor_model.trainable_variables))

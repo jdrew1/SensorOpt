@@ -10,18 +10,18 @@ import TensorflowInterface
 import debugVisualizer
 
 
-def run_test(macos=False, load_trained_model="", save_dir="", train_networks=True, training_iterations=2,
-             iterations_per=2):
+def run_test(macos=False, load_trained_model="", save_dir="", train_networks=True, training_iterations=200,
+             iterations_per=5):
     env = CarlaWrapper.CarlaWrapperEnv(
         macos=macos,
         numOfPoints=6000,
         numOfLiDAR=1,
-        no_render=False,
-        test_box=False,
+        no_render=True,
+        test_box=True,
         cylinder_shape=(720, 20),
         down_sample_lidar=True,
         front_and_back_scaling=False,
-        shuffle_vehicles=list(range(0, 10))  # 0 to keep single vehicle
+        shuffle_vehicles=0  # list(range(0, 10))  # 0 to keep single vehicle
     )
     place_sensor_on_surface = True
 
@@ -152,7 +152,7 @@ def do_test_after_random_train(env):
 
     # load trained network
     actor_network = TensorflowInterface.create_actor(num_points=6000, num_lidar=1, lower_bound=[-4.0, -4.0, 0.5],
-                                                     upper_bound=[4.0, 4.0, 3.5], load_from_file="4_test_test/actor")
+                                                     upper_bound=[4.0, 4.0, 3.5], load_from_file="4_test_box/actor")
     # turn of environment shuffling
     env.set_shuffle_vehicle(0)
     # for each vehicle
@@ -171,7 +171,7 @@ def do_test_after_random_train(env):
 if __name__ == '__main__':
     try:
         open_and_close_automatically = True
-        env = run_test(macos=open_and_close_automatically, save_dir="4_test_test")
+        env = run_test(macos=open_and_close_automatically, save_dir="4_test_box")
         # debugMethods:
         do_test_after_random_train(env)
         # CarlaInterface.show_color_lidar_measurement(testBox=False)
