@@ -9,7 +9,7 @@ import debugVisualizer
 class CarlaWrapperEnv(gym.Env):
 
     def __init__(self, numOfPoints=6000, numOfLiDAR=1, no_render=False, test_box=True, cylinder_shape=(360, 20),
-                 down_sample_lidar=True, front_and_back_scaling=True, shuffle_vehicles=False, macos=False):
+                 down_sample_lidar=True, front_and_back_scaling=True, shuffle_vehicles=0, macos=False):
         CarlaInterface.setup_carla_environment(no_render=no_render, macos=macos)
         CarlaInterface.place_cylinder_and_car(distance=10.0)
         self.test_box = test_box
@@ -51,7 +51,7 @@ class CarlaWrapperEnv(gym.Env):
         if self.test_box:
             self._vehiclePoints = CarlaInterface.testBoxMesh(self.num_points, True)
         else:
-            if self.shuffle_vehicle:
+            if type(self.shuffle_vehicle) is list:
                 CarlaInterface.select_random_vehicle()
             self._vehiclePoints = CarlaInterface.findCarMesh(self.num_points, True)
         self._vehiclePoints = self._vehiclePoints[self._vehiclePoints[:, 2].argsort()]
@@ -66,3 +66,7 @@ class CarlaWrapperEnv(gym.Env):
         self.cumulative_TLO = self.cumulative_TLO/self.cylinder_shape[0]/self.cylinder_shape[1]
         self.episode_finished = True
         return self._vehiclePoints, self.cumulative_TLO, self.episode_finished, info
+
+    def set_shuffle_vehicle(self, new_shuffle):
+        self.shuffle_vehicle = new_shuffle
+        return

@@ -10,17 +10,18 @@ import TensorflowInterface
 import debugVisualizer
 
 
-def run_test(macos=False, load_trained_model="model_1_rand", save_dir="", train_networks=True):
+def run_test(macos=False, load_trained_model="", save_dir="", train_networks=True, training_iterations=2,
+             iterations_per=2):
     env = CarlaWrapper.CarlaWrapperEnv(
         macos=macos,
         numOfPoints=6000,
         numOfLiDAR=1,
-        no_render=True,
+        no_render=False,
         test_box=False,
         cylinder_shape=(720, 20),
         down_sample_lidar=True,
         front_and_back_scaling=False,
-        shuffle_vehicles=False
+        shuffle_vehicles=list(range(0, 10))  # 0 to keep single vehicle
     )
     place_sensor_on_surface = True
 
@@ -30,8 +31,8 @@ def run_test(macos=False, load_trained_model="model_1_rand", save_dir="", train_
     critic_lr = 0.02
     actor_lr = 0.04
 
-    total_episodes = 200
-    iterations_per_episode = 5
+    total_episodes = training_iterations
+    iterations_per_episode = iterations_per
     buffer_length = 200
     training_batch_size = 64
     # target network update rate
@@ -132,6 +133,7 @@ def run_test(macos=False, load_trained_model="model_1_rand", save_dir="", train_
         critic_model.save(save_dir + "/critic")
         target_actor.save(save_dir + "/target_actor")
         target_critic.save(save_dir + "/target_critic")
+    return env
 
 
 def show_training_path(coords_replay):
@@ -144,13 +146,36 @@ def show_training_path(coords_replay):
     return
 
 
+def do_test_after_random_train(env):
+    test_vehicle_index = list([0, 17, 8, 22])
+    # VW T2, Toyota Prius, Audi E-tron, Chevrolet Impala
+
+    # load trained network
+    actor_network = TensorflowInterface.create_actor(num_points=6000, num_lidar=1, lower_bound=[-4.0, -4.0, 0.5],
+                                                     upper_bound=[4.0, 4.0, 3.5], load_from_file="4_test_test/actor")
+    # turn of environment shuffling
+    env.set_shuffle_vehicle(0)
+    # for each vehicle
+    for i in range(len(test_vehicle_index)):
+        CarlaInterface.select_random_vehicle(test_vehicle_index[i])
+        state = env.reset()
+        print("Vehicle: ", test_vehicle_index[i])
+        for j in range(10):
+            # do 10 iterations for analysis
+            action = tf.squeeze(actor_network(tf.expand_dims(tf.convert_to_tensor(state), 0)))
+            state, reward, c, d = env.step(action)
+            print("Iteration: ", j, "\t Reward: ", reward, "\t Action:", action)
+    return
+
+
 if __name__ == '__main__':
     try:
         open_and_close_automatically = True
-        run_test(macos=open_and_close_automatically)
+        env = run_test(macos=open_and_close_automatically, save_dir="4_test_test")
         # debugMethods:
+        do_test_after_random_train(env)
         # CarlaInterface.show_color_lidar_measurement(testBox=False)
         # CarlaInterface.find_tlo_of_car_mesh(testBox=False)
-        CarlaInterface.find_car_mesh_q_function(testBox=False, load_model_file='model_1_rand')
+        # CarlaInterface.find_car_mesh_q_function(testBox=False, load_model_file='model_1_rand')
     finally:
         CarlaInterface.closeEnvironment(macos=open_and_close_automatically)

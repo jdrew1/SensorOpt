@@ -416,7 +416,7 @@ def calculate_tlo_with_occlusion(coords, cylinder_shape=(360, 40), downsample=Tr
     return total_surface
 
 
-def select_random_vehicle(search_params='*vehicle*'):
+def select_random_vehicle(list_of_indexes=list(range(0, 35))):
     global vehicle
     global world
     global bp_lib
@@ -432,10 +432,13 @@ def select_random_vehicle(search_params='*vehicle*'):
         for actor in world.get_actors().filter('*vehicle*'): actor.destroy()
     time.sleep(0.1)
     all_vehicle_bp = bp_lib.filter('*vehicle*')
-    rand_index = random.randint(0, 20)
+    if type(list_of_indexes) is int:
+        rand_index = list_of_indexes
+    elif type(list_of_indexes) is list:
+        rand_index = list_of_indexes[random.randint(0, len(list_of_indexes)-1)]
     # for some reason, entries 33 and 35 do not exist and cause crashes
-    while rand_index == 33 or rand_index == 35:
-        rand_index = random.randint(0, len(all_vehicle_bp)-1)
+    while rand_index == 33 or rand_index == 35 or rand_index > 38:
+        rand_index = list_of_indexes[random.randint(0, len(list_of_indexes)-1)]
     vehicle = world.try_spawn_actor(all_vehicle_bp[rand_index], carla.Transform(carla.Location(x=0, y=0, z=0.3)))
     if vehicle is None:
         vehicle = world.spawn_actor(all_vehicle_bp[rand_index], carla.Transform(carla.Location(x=0, y=0, z=0.3)))
