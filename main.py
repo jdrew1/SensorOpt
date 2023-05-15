@@ -10,13 +10,13 @@ import TensorflowInterface
 import debugVisualizer
 
 
-def run_test(macos=False, load_trained_model="", save_dir="", train_networks=True, training_iterations=200,
-             iterations_per=5):
+def run_test(macos=False, load_trained_model="", save_dir="", train_networks=True, training_iterations=20,
+             iterations_per=2):
     env = CarlaWrapper.CarlaWrapperEnv(
         macos=macos,
         numOfPoints=6000,
         numOfLiDAR=1,
-        no_render=True,
+        no_render=False,
         test_box=True,
         cylinder_shape=(720, 20),
         down_sample_lidar=True,
@@ -25,7 +25,7 @@ def run_test(macos=False, load_trained_model="", save_dir="", train_networks=Tru
     )
     place_sensor_on_surface = True
 
-    random_action = True
+    random_action = False
 
     # Learning rate for actor-critic models
     critic_lr = 0.02
@@ -158,6 +158,7 @@ def do_test_after_random_train(env):
     # for each vehicle
     for i in range(len(test_vehicle_index)):
         CarlaInterface.select_random_vehicle(test_vehicle_index[i])
+        env.set_test_box(False)
         state = env.reset()
         print("Vehicle: ", test_vehicle_index[i])
         for j in range(10):

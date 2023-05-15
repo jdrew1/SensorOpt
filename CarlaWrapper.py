@@ -70,3 +70,7 @@ class CarlaWrapperEnv(gym.Env):
     def set_shuffle_vehicle(self, new_shuffle):
         self.shuffle_vehicle = new_shuffle
         return
+
+    def set_test_box(self, test_box):
+        self.test_box = test_box
+        return

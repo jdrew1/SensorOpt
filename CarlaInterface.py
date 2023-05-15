@@ -152,7 +152,7 @@ def testBoxMesh(numOfPoints=6000, setNumber=False, downsample=False):
         for x in np.arange(-3,3.1,0.5):
             for y in np.arange(-1.5,1.6,0.5):
                 for z in np.arange(0,1.1,0.5):
-                    box_bp = bp_lib.filter('box02*')[0]
+                    box_bp = bp_lib.filter('*box02*')[0]
                     world.try_spawn_actor(box_bp,
                                           carla.Transform(carla.Location(x=x, y=y, z=z), carla.Rotation()))
     distance = 8.5
@@ -425,7 +425,7 @@ def select_random_vehicle(list_of_indexes=list(range(0, 35))):
     global test_rectangle_flag
     if test_rectangle_flag:
         test_rectangle_flag = False
-        for actor in world.get_actors().filter('box02*'):
+        for actor in world.get_actors().filter('*box02*'):
             actor.destroy()
         place_cylinder_and_car()
     if not vehicle.destroy():
