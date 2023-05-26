@@ -10,14 +10,14 @@ import TensorflowInterface
 import debugVisualizer
 
 
-def run_test(macos=False, load_trained_model="", save_dir="", train_networks=True, training_iterations=20,
-             iterations_per=2):
+def run_test(macos=False, load_trained_model="", save_dir="", train_networks=True, training_iterations=200,
+             iterations_per=5):
     env = CarlaWrapper.CarlaWrapperEnv(
         macos=macos,
         numOfPoints=6000,
         numOfLiDAR=1,
-        no_render=False,
-        test_box=True,
+        no_render=True,
+        test_box=False,
         cylinder_shape=(720, 20),
         down_sample_lidar=True,
         front_and_back_scaling=False,
@@ -25,18 +25,18 @@ def run_test(macos=False, load_trained_model="", save_dir="", train_networks=Tru
     )
     place_sensor_on_surface = True
 
-    random_action = False
+    random_action = True
 
     # Learning rate for actor-critic models
-    critic_lr = 0.02
-    actor_lr = 0.04
+    critic_lr = 0.05
+    actor_lr = 0.02
 
     total_episodes = training_iterations
     iterations_per_episode = iterations_per
-    buffer_length = 200
+    buffer_length = 2000
     training_batch_size = 64
     # target network update rate
-    rho = 0.95
+    rho = 0.995
 
     print("Size of State Space ->  {}".format(env.observation_spec.shape[0]))
     print("Size of Action Space ->  {}".format(env.action_spec.shape[0]))
@@ -146,13 +146,13 @@ def show_training_path(coords_replay):
     return
 
 
-def do_test_after_random_train(env):
+def do_test_after_random_train(env, load_model_file=''):
     test_vehicle_index = list([0, 17, 8, 22])
     # VW T2, Toyota Prius, Audi E-tron, Chevrolet Impala
 
     # load trained network
     actor_network = TensorflowInterface.create_actor(num_points=6000, num_lidar=1, lower_bound=[-4.0, -4.0, 0.5],
-                                                     upper_bound=[4.0, 4.0, 3.5], load_from_file="4_test_box/actor")
+                                                     upper_bound=[4.0, 4.0, 3.5], load_from_file=load_model_file + "/actor")
     # turn of environment shuffling
     env.set_shuffle_vehicle(0)
     # for each vehicle
@@ -174,9 +174,9 @@ if __name__ == '__main__':
         open_and_close_automatically = True
         env = run_test(macos=open_and_close_automatically, save_dir="4_test_box")
         # debugMethods:
-        do_test_after_random_train(env)
+        # do_test_after_random_train(env)
         # CarlaInterface.show_color_lidar_measurement(testBox=False)
         # CarlaInterface.find_tlo_of_car_mesh(testBox=False)
-        # CarlaInterface.find_car_mesh_q_function(testBox=False, load_model_file='model_1_rand')
+        CarlaInterface.find_car_mesh_q_function(testBox=False, load_model_file='4_test_box')
     finally:
         CarlaInterface.closeEnvironment(macos=open_and_close_automatically)

@@ -33,6 +33,8 @@ def create_actor(num_points, num_lidar, upper_bound, lower_bound, load_from_file
     inputs = layers.Input(shape=(num_points,))
     out = layers.Flatten()(inputs)
     out = layers.Dense(2048, activation="relu")(out)
+    out = layers.Dense(4092, activation="relu")(out)
+    out = layers.Dense(512, activation="relu")(out)
     out = layers.Dense(512, activation="relu")(out)
     out = layers.Dense(256, activation="relu")(out)
     outputs = layers.Dense(num_lidar, activation="sigmoid", kernel_initializer=last_init)(out)
@@ -49,16 +51,17 @@ def create_critic(num_points, num_lidar, load_from_file=''):
         model.compile()
         return model
     state_input = layers.Input(shape=(num_points,))
-    state_out = layers.Dense(2048, activation="relu")(state_input)
-    state_out = layers.Dense(1024, activation="relu")(state_out)
-    state_out = layers.Dense(256, activation="relu")(state_out)
+    state_out = layers.Dense(1024, activation="linear")(state_input)
+    state_out = layers.Dense(512, activation="relu")(state_out)
     action_input = layers.Input(shape=(num_lidar,))
-    action_out = layers.Dense(128, activation="relu")(action_input)
-    action_out = layers.Dense(256, activation="relu")(action_out)
+    action_out = layers.Dense(256, activation="linear")(action_input)
+    action_out = layers.Dense(512, activation="relu")(action_out)
     concat = layers.Concatenate()([state_out, action_out])
-    out = layers.Dense(512, activation="relu")(concat)
-    out = layers.Dense(256, activation="relu")(out)
-    outputs = layers.Dense(1)(out)
+    out = layers.Dense(1024, activation="tanh")(concat)
+    out = layers.Dense(512, activation="tanh")(out)
+    out = layers.Dense(128, activation="tanh")(out)
+    out = layers.Dense(32, activation="tanh")(out)
+    outputs = layers.Dense(1, activation="sigmoid")(out)
     model = tf.keras.Model([state_input, action_input], outputs)
     model.compile()
     return model
@@ -130,19 +133,25 @@ class Buffer:
         # use gradient tape to find training direction for actor and critic
         with tf.GradientTape() as tape:
             target_actions = self.target_actor(next_state_batch, training=True)
-            y = reward_batch + (1 - self.rho) * self.target_critic([next_state_batch, target_actions], training=True)
+            y = reward_batch  # + (1 - self.rho) * self.target_critic([next_state_batch, target_actions], training=True)
             critic_value = self.critic_model([state_batch, action_batch], training=True)
             critic_loss = tf.math.reduce_mean(tf.math.square(y - critic_value))
+        print("Reward batch: ->")
+        tf.print(reward_batch)
+        print("Critic batch: ->")
+        tf.print(critic_value)
+        print("Current Critic Loss: -> ")
+        tf.print(critic_loss)
         critic_grad = tape.gradient(critic_loss, self.critic_model.trainable_variables)
         self.critic_optimizer.apply_gradients(zip(critic_grad, self.critic_model.trainable_variables))
         with tf.GradientTape() as tape:
             actions = self.actor_model(state_batch, training=True)
-            critic_value = self.target_critic([state_batch, actions], training=True)
+            critic_value = self.critic_model([state_batch, actions], training=True)
             actor_loss = -tf.math.reduce_mean(critic_value)
         actor_grad = tape.gradient(actor_loss, self.actor_model.trainable_variables)
         self.actor_optimizer.apply_gradients(zip(actor_grad, self.actor_model.trainable_variables))
 
-    # computer loss and update weights and biases
+    # compute loss and update weights and biases
     def learn(self):
         record_range = min(self.buffer_counter, self.buffer_capacity)
         batch_indices = np.random.choice(record_range, min(self.batch_size, record_range))
