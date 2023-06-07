@@ -495,10 +495,10 @@ def find_tlo_of_car_mesh(testBox=True, const_coords=np.zeros(shape=(0, 3))):
     debugVisualizer.debugVisualizer(points, color_list=colors, colors=True, downsample=False)
 
 
-def find_car_mesh_q_function(testBox=False, load_model_file='model_6000_1_mix'):
+def find_car_mesh_q_function(testBox=False, load_model_file='', const_coords=np.zeros(shape=(0, 3))):
     from TensorflowInterface import create_critic
     import tensorflow as tf
-    critic_network = create_critic(6000*3, 1*3, load_model_file + '/critic')
+    critic_network = create_critic((6000, 3), (1, 3), load_model_file + '/critic')
     color_map = np.array(cm.get_cmap('turbo').colors)
     color_range = np.linspace(0.0, 1.0, color_map.shape[0])
     if testBox:
@@ -506,21 +506,24 @@ def find_car_mesh_q_function(testBox=False, load_model_file='model_6000_1_mix'):
     else:
         points = findCarMesh(6000, True, False)
     # debugVisualizer.debugVisualizer(points)
-    colors = np.zeros(shape=points.shape)
-
-    # points = points[points[:, 2].argsort()]
-    # points = points[points[:, 1].argsort(kind='mergesort')]
-    # points = points[points[:, 0].argsort(kind='mergesort')]
     print("range: ", points.shape[0])
-    for point in range(points.shape[0]):
-        start_time = time.thread_time()
-        sensor_coord = correct_input_points_to_point_on_vehicle(np.copy(points[point]))
-        intensity = float(critic_network.call((tf.convert_to_tensor(points.reshape(1, -1)), tf.convert_to_tensor(sensor_coord.reshape(1, -1))), training=False))
-        print("point: ", point, " |return : ", intensity, " |time: ", time.thread_time() - start_time)
-        colors[point] = np.array([np.interp(intensity, color_range, color_map[:, 0]),
-                                  np.interp(intensity, color_range, color_map[:, 1]),
-                                  np.interp(intensity, color_range, color_map[:, 2])])
+
+    vehicle_points_batch = np.stack([points]*points.shape[0])
+    const_coords_batch = np.stack([const_coords]*points.shape[0])
+    sensor_points_batch = np.copy(points).reshape((points.shape[0], -1, 3))
+    sensor_points_batch = np.concatenate((const_coords_batch, sensor_points_batch), axis=1)
+
+    intensity = critic_network.predict([vehicle_points_batch, sensor_points_batch])
+
+    def color_func(_inten=np.array):
+        return np.array([np.interp(_inten, color_range, color_map[:, 0]),
+                         np.interp(_inten, color_range, color_map[:, 1]),
+                         np.interp(_inten, color_range, color_map[:, 2])])
+
+    colors = np.apply_along_axis(color_func, 1, intensity).reshape((-1, 3))
     debugVisualizer.debugVisualizer(points, color_list=colors, colors=True, downsample=False)
+    # np.savez("vehicle_points_batch_1", vehicle_points_batch)
+    np.savez("sensor_points_batch_1", sensor_points_batch)
 
 
 def show_color_lidar_measurement(testBox=False, coords=np.array([[0.0, 0.0, 2.0], [0.4, 0.0, 2.0], [0.4*math.sin(7*math.pi/6), 0.4*math.cos(7*math.pi/6), 2.0], [0.4*math.sin(11*math.pi/6), 0.4*math.cos(11*math.pi/6), 2.0]])):

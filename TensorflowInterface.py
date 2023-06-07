@@ -24,46 +24,52 @@ def policy_with_noise(state, noise_object, actor_model, lower_bound, upper_bound
     return np.squeeze(legal_action)
 
 
-def create_actor(num_points, num_lidar, upper_bound, lower_bound, load_from_file=''):
+def create_actor(points_shape, lidar_shape, upper_bound, lower_bound, load_from_file=''):
     if load_from_file != '':
         model = keras.models.load_model(load_from_file)
         model.compile()
         return model
     last_init = tf.random_uniform_initializer(minval=-0.003, maxval=0.003)
-    inputs = layers.Input(shape=(num_points,))
-    out = layers.Flatten()(inputs)
+    inputs = layers.Input(shape=points_shape)
+    input_norm = layers.Normalization(axis=-1, mean=[0.0, 0.0, 1.2], variance=[2.0, 0.5, 0.5])(inputs)
+    out = layers.Flatten()(input_norm)
     out = layers.Dense(2048, activation="relu")(out)
     out = layers.Dense(4092, activation="relu")(out)
     out = layers.Dense(512, activation="relu")(out)
     out = layers.Dense(512, activation="relu")(out)
     out = layers.Dense(256, activation="relu")(out)
-    outputs = layers.Dense(num_lidar, activation="sigmoid", kernel_initializer=last_init)(out)
+    outputs = layers.Dense(lidar_shape[0]*3, activation="sigmoid", kernel_initializer=last_init)(out)
     output_space_span = upper_bound - lower_bound
     outputs = ((outputs * output_space_span) + lower_bound)
+    outputs = layers.Reshape((-1, 3))(outputs)
     model = tf.keras.Model(inputs, outputs)
     model.compile()
     return model
 
 
-def create_critic(num_points, num_lidar, load_from_file=''):
+def create_critic(point_shape, lidar_shape, load_from_file=''):
     if load_from_file != '':
         model = keras.models.load_model(load_from_file)
         model.compile()
         return model
-    state_input = layers.Input(shape=(num_points,))
-    state_out = layers.Dense(1024, activation="linear")(state_input)
-    state_out = layers.Dense(512, activation="relu")(state_out)
-    action_input = layers.Input(shape=(num_lidar,))
-    action_out = layers.Dense(256, activation="linear")(action_input)
-    action_out = layers.Dense(512, activation="relu")(action_out)
+    state_input = layers.Input(shape=point_shape)
+    state_norm = layers.Normalization(axis=-1, mean=[0.0, 0.0, 1.2], variance=[2.0, 0.5, 0.5])(state_input)
+    state_flat = layers.Flatten()(state_input)
+    state_out = layers.Dense(4096, activation="relu")(state_flat)
+    state_out = layers.Dense(1024, activation="relu")(state_out)
+
+    action_input = layers.Input(shape=lidar_shape)
+    action_norm = layers.Normalization(axis=-1, mean=[0.0, 0.0, 1.2], variance=[1.5, 1.0, 0.5])(action_input)
+    action_flat = layers.Flatten()(action_input)
+    action_out = layers.Dense(2048, activation="relu")(action_flat)
+
     concat = layers.Concatenate()([state_out, action_out])
-    out = layers.Dense(1024, activation="tanh")(concat)
-    out = layers.Dense(512, activation="tanh")(out)
-    out = layers.Dense(128, activation="tanh")(out)
-    out = layers.Dense(32, activation="tanh")(out)
+    out = layers.Dense(1024, activation="relu")(concat)
+    out = layers.Dense(64, activation="relu")(out)
     outputs = layers.Dense(1, activation="sigmoid")(out)
     model = tf.keras.Model([state_input, action_input], outputs)
     model.compile()
+    # print(model.summary())
     return model
 
 
@@ -105,10 +111,10 @@ class Buffer:
         self.buffer_counter = 0
         self.rho = rho
 
-        self.state_buffer = np.zeros((self.buffer_capacity, num_points))
-        self.action_buffer = np.zeros((self.buffer_capacity, num_lidar))
+        self.state_buffer = np.zeros((self.buffer_capacity, num_points, 3))
+        self.action_buffer = np.zeros((self.buffer_capacity, num_lidar, 3))
         self.reward_buffer = np.zeros((self.buffer_capacity, 1))
-        self.next_state_buffer = np.zeros((self.buffer_capacity, num_points))
+        self.next_state_buffer = np.zeros((self.buffer_capacity, num_points, 3))
 
         self.actor_model = actor_model
         self.critic_model = critic_model
@@ -128,20 +134,16 @@ class Buffer:
         self.buffer_counter += 1
 
     # package this function as tensorflow to allow for tensorflow optimization/parallelization
-    @tf.function
-    def update(self, state_batch, action_batch, reward_batch, next_state_batch, ):
+    @tf.function(reduce_retracing=True)
+    def update(self, state_batch, action_batch, reward_batch, next_state_batch):
         # use gradient tape to find training direction for actor and critic
         with tf.GradientTape() as tape:
             target_actions = self.target_actor(next_state_batch, training=True)
             y = reward_batch  # + (1 - self.rho) * self.target_critic([next_state_batch, target_actions], training=True)
             critic_value = self.critic_model([state_batch, action_batch], training=True)
-            critic_loss = tf.math.reduce_mean(tf.math.square(y - critic_value))
-        print("Reward batch: ->")
-        tf.print(reward_batch)
-        print("Critic batch: ->")
-        tf.print(critic_value)
-        print("Current Critic Loss: -> ")
-        tf.print(critic_loss)
+            # critic_loss = tf.math.reduce_mean(tf.math.square(y - critic_value))
+            critic_loss = keras.losses.log_cosh(y, critic_value)
+        tf.print(tf.math.reduce_mean(critic_loss))
         critic_grad = tape.gradient(critic_loss, self.critic_model.trainable_variables)
         self.critic_optimizer.apply_gradients(zip(critic_grad, self.critic_model.trainable_variables))
         with tf.GradientTape() as tape:
@@ -160,4 +162,11 @@ class Buffer:
         reward_batch = tf.convert_to_tensor(self.reward_buffer[batch_indices])
         reward_batch = tf.cast(reward_batch, dtype=tf.float32)
         next_state_batch = tf.convert_to_tensor(self.next_state_buffer[batch_indices])
+        # update normalization targets
+        """self.actor_model.layers[1].adapt(state_batch)
+        self.critic_model.layers[1].adapt(state_batch)
+        self.critic_model.layers[4].adapt(action_batch)
+        self.target_actor.layers[1].adapt(state_batch)
+        self.target_critic.layers[1].adapt(state_batch)
+        self.target_critic.layers[4].adapt(action_batch)"""
         self.update(state_batch, action_batch, reward_batch, next_state_batch)

@@ -15,16 +15,10 @@ class CarlaWrapperEnv(gym.Env):
         self.test_box = test_box
         self.num_points = numOfPoints
         self.num_lidar = numOfLiDAR
-        outputshape = [-4.0, -4.0, 0.5]
-        for i in range(numOfLiDAR-1):
-            outputshape = np.append(outputshape, np.asarray([-4.0, -4.0, 0.5]))
-        self.min_action = np.copy(outputshape)
-        outputshape = [4.0, 4.0, 3.5]
-        for i in range(numOfLiDAR-1):
-            outputshape = np.append(outputshape, np.asarray([4.0, 4.0, 3.5]))
-        self.max_action = np.copy(outputshape)
-        self.action_spec = spaces.Box(low=self.min_action, high=self.max_action, shape=(numOfLiDAR*3,))
-        self.observation_spec = spaces.Box(low=-200, high=200, shape=(numOfPoints*3,))
+        self.min_action = np.stack([[-4.0, -4.0, 0.1]]*numOfLiDAR)
+        self.max_action = np.stack([[4.0, 4.0, 0.1]]*numOfLiDAR)
+        self.action_spec = spaces.Box(low=self.min_action, high=self.max_action, shape=(numOfLiDAR, 3))
+        self.observation_spec = spaces.Box(low=-200, high=200, shape=(numOfPoints, 3))
 
         self.episode_finished = False  # state = number of lidar being placed
 
@@ -39,10 +33,13 @@ class CarlaWrapperEnv(gym.Env):
     def reset(self):
         self.cumulative_TLO = 0.0
         if self.test_box:
-            self._vehiclePoints = CarlaInterface.testBoxMesh(self.num_points, True).flatten()
+            self._vehiclePoints = CarlaInterface.testBoxMesh(self.num_points, True)
         else:
-            self._vehiclePoints = CarlaInterface.findCarMesh(self.num_points, True).flatten()
-        return self._vehiclePoints.flatten()
+            self._vehiclePoints = CarlaInterface.findCarMesh(self.num_points, True)
+        self._vehiclePoints = self._vehiclePoints[self._vehiclePoints[:, 2].argsort()]
+        self._vehiclePoints = self._vehiclePoints[self._vehiclePoints[:, 1].argsort(kind='mergesort')]
+        self._vehiclePoints = self._vehiclePoints[self._vehiclePoints[:, 0].argsort(kind='mergesort')]
+        return self._vehiclePoints
 
     def step(self, action):
         info = {}
@@ -53,10 +50,10 @@ class CarlaWrapperEnv(gym.Env):
         else:
             if type(self.shuffle_vehicle) is list:
                 CarlaInterface.select_random_vehicle()
-            self._vehiclePoints = CarlaInterface.findCarMesh(self.num_points, True)
+            self._vehiclePoints = CarlaInterface.findCarMesh(self.num_points, True)  # .flatten()
         self._vehiclePoints = self._vehiclePoints[self._vehiclePoints[:, 2].argsort()]
         self._vehiclePoints = self._vehiclePoints[self._vehiclePoints[:, 1].argsort(kind='mergesort')]
-        self._vehiclePoints = self._vehiclePoints[self._vehiclePoints[:, 0].argsort(kind='mergesort')].flatten()
+        self._vehiclePoints = self._vehiclePoints[self._vehiclePoints[:, 0].argsort(kind='mergesort')]
         # debugVisualizer.debugVisualizer(self._vehiclePoints)
         self.cumulative_TLO = CarlaInterface.calculate_tlo_with_occlusion(self._sensor_placements,
                                                                           cylinder_shape=self.cylinder_shape,

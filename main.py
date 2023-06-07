@@ -28,34 +28,34 @@ def run_test(macos=False, load_trained_model="", save_dir="", train_networks=Tru
     random_action = True
 
     # Learning rate for actor-critic models
-    critic_lr = 0.05
-    actor_lr = 0.02
+    critic_lr = 2.0e-06
+    actor_lr = 1.0e-06
 
     total_episodes = training_iterations
     iterations_per_episode = iterations_per
     buffer_length = 2000
-    training_batch_size = 64
+    training_batch_size = 32
     # target network update rate
     rho = 0.995
 
-    print("Size of State Space ->  {}".format(env.observation_spec.shape[0]))
-    print("Size of Action Space ->  {}".format(env.action_spec.shape[0]))
+    print("Size of State Space ->  {}".format(env.observation_spec.shape))
+    print("Size of Action Space ->  {}".format(env.action_spec.shape))
 
     # start noise high for better searching, then decrease to hone
     def std_dev(step):
         return float(1.0 / (step/10 + 1)) * np.ones(env.action_spec.shape[0])
     ou_noise = TensorflowInterface.OUActionNoise(mean=np.zeros(env.action_spec.shape[0]), std_deviation_function=std_dev)
 
-    actor_model = TensorflowInterface.create_actor(env.observation_spec.shape[0], env.action_spec.shape[0],
+    actor_model = TensorflowInterface.create_actor(env.observation_spec.shape, env.action_spec.shape,
                                                    env.action_spec.high, env.action_spec.low,
                                                    (load_trained_model + '/actor') if load_trained_model != '' else '')
-    critic_model = TensorflowInterface.create_critic(env.observation_spec.shape[0], env.action_spec.shape[0],
+    critic_model = TensorflowInterface.create_critic(env.observation_spec.shape, env.action_spec.shape,
                                                      (load_trained_model + '/critic') if load_trained_model != '' else '')
 
-    target_actor = TensorflowInterface.create_actor(env.observation_spec.shape[0], env.action_spec.shape[0],
+    target_actor = TensorflowInterface.create_actor(env.observation_spec.shape, env.action_spec.shape,
                                                     env.action_spec.high, env.action_spec.low,
                                                     (load_trained_model + '/target_actor') if load_trained_model != '' else '')
-    target_critic = TensorflowInterface.create_critic(env.observation_spec.shape[0], env.action_spec.shape[0],
+    target_critic = TensorflowInterface.create_critic(env.observation_spec.shape, env.action_spec.shape,
                                                       (load_trained_model + '/target_critic') if load_trained_model != '' else '')
 
     # to initialize, target = learning
@@ -63,7 +63,7 @@ def run_test(macos=False, load_trained_model="", save_dir="", train_networks=Tru
         target_actor.set_weights(actor_model.get_weights())
         target_critic.set_weights(critic_model.get_weights())
 
-    critic_optimizer = tf.keras.optimizers.Adam(critic_lr)
+    critic_optimizer = tf.keras.optimizers.Adam(critic_lr, epsilon=2.0e-6, amsgrad=False)
     actor_optimizer = tf.keras.optimizers.Adam(actor_lr)
 
     buffer = TensorflowInterface.Buffer(actor_model, critic_model, actor_optimizer, critic_optimizer, target_actor, target_critic,
@@ -78,7 +78,7 @@ def run_test(macos=False, load_trained_model="", save_dir="", train_networks=Tru
         start_time = time.thread_time()
         prev_state = env.reset()
         episodic_reward = 0
-
+        print("Critic Loss Per Episode: -> ")
         for i in range(iterations_per_episode):
             tf_prev_state = tf.expand_dims(tf.convert_to_tensor(prev_state), 0)
             # generate action with noise
@@ -92,8 +92,8 @@ def run_test(macos=False, load_trained_model="", save_dir="", train_networks=Tru
             # train from collected experience
             if train_networks:
                 buffer.learn()
-                TensorflowInterface.update_target(target_actor.variables, actor_model.variables, rho)
-                TensorflowInterface.update_target(target_critic.variables, critic_model.variables, rho)
+                TensorflowInterface.update_target(target_actor.trainable_variables, actor_model.trainable_variables, rho)
+                TensorflowInterface.update_target(target_critic.trainable_variables, critic_model.trainable_variables, rho)
 
             prev_state = state
 
@@ -110,8 +110,8 @@ def run_test(macos=False, load_trained_model="", save_dir="", train_networks=Tru
     # Plotting graph
     # Episodes versus Avg. Rewards
 
-    for i in range((buffer.buffer_counter+1) % buffer.buffer_capacity):
-        print("[" + str(buffer.action_buffer[i,0]) + ", " + str(buffer.action_buffer[i,1]) + ", " + str(buffer.action_buffer[i,2]) + "], ")
+    # for i in range((buffer.buffer_counter+1) % buffer.buffer_capacity):
+    #     print(buffer.action_buffer[i])
     from CarlaInterface import show_color_lidar_measurement
     # show_color_lidar_measurement(False, buffer.action_buffer[:buffer.buffer_counter, :])
     # show_training_path(coords_replay=np.copy(buffer.action_buffer[:(buffer.buffer_counter+1) % buffer.buffer_capacity, :]))
@@ -151,7 +151,7 @@ def do_test_after_random_train(env, load_model_file=''):
     # VW T2, Toyota Prius, Audi E-tron, Chevrolet Impala
 
     # load trained network
-    actor_network = TensorflowInterface.create_actor(num_points=6000, num_lidar=1, lower_bound=[-4.0, -4.0, 0.5],
+    actor_network = TensorflowInterface.create_actor(points_shape=6000, lidar_shape=1, lower_bound=[-4.0, -4.0, 0.5],
                                                      upper_bound=[4.0, 4.0, 3.5], load_from_file=load_model_file + "/actor")
     # turn of environment shuffling
     env.set_shuffle_vehicle(0)
@@ -172,11 +172,15 @@ def do_test_after_random_train(env, load_model_file=''):
 if __name__ == '__main__':
     try:
         open_and_close_automatically = True
+        """
         env = run_test(macos=open_and_close_automatically, save_dir="4_test_box")
+        """
+        CarlaInterface.setup_carla_environment(macos=True)
+        CarlaInterface.place_cylinder_and_car()  # """
+        CarlaInterface.find_car_mesh_q_function(testBox=False, load_model_file='4_test_box')
         # debugMethods:
         # do_test_after_random_train(env)
         # CarlaInterface.show_color_lidar_measurement(testBox=False)
         # CarlaInterface.find_tlo_of_car_mesh(testBox=False)
-        CarlaInterface.find_car_mesh_q_function(testBox=False, load_model_file='4_test_box')
     finally:
         CarlaInterface.closeEnvironment(macos=open_and_close_automatically)
